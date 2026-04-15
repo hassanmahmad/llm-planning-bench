@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 # Import configuration
 try:
@@ -119,6 +119,68 @@ def validate_plan(domain_path: str, problem_path: str, plan_path: str, val_execu
             "valid": False,
             "error": f"VAL execution error: {str(e)}"
         }
+
+
+def validate_plan_verbose(
+    domain_path: str,
+    problem_path: str,
+    plan_text: str,
+    val_executable: Optional[str] = None,
+    timeout: Optional[int] = None,
+) -> Tuple[bool, str]:
+    """Run VAL with -v on plan_text, return (is_valid, raw_stdout).
+
+    Canonical entry point for every VAL call in the pipeline: metrics
+    extraction, iteration-loop validity checks, and feedback prompt
+    construction all go through this function (STEPS.md §1.3).
+
+    Non-PDDL lines (e.g. a trailing "Generated in N iterations." header
+    left over from Project A plan files) are stripped before VAL sees
+    the plan so trailing prose cannot poison the parse.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+
+    if val_executable is None:
+        val_executable = get_val_executable()
+    if timeout is None:
+        try:
+            timeout = load_config().get("VAL_TIMEOUT", 300)
+        except Exception:
+            timeout = 300
+
+    kept = [
+        line for line in plan_text.splitlines()
+        if not line.strip() or line.lstrip().startswith(("(", ";"))
+    ]
+    cleaned = "\n".join(kept)
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".plan", delete=False, encoding="utf-8"
+    ) as tmp:
+        tmp.write(cleaned)
+        tmp_path = tmp.name
+
+    try:
+        try:
+            result = subprocess.run(
+                [val_executable, "-v", domain_path, problem_path, tmp_path],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except FileNotFoundError:
+            log.error("VAL executable '%s' not found", val_executable)
+            return False, ""
+        except subprocess.TimeoutExpired:
+            log.error("VAL -v validation timeout (%ss)", timeout)
+            return False, ""
+        return result.returncode == 0, result.stdout
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
 
 
 def validate_plan_from_text(domain_path: str, problem_path: str, plan_text: str, val_executable: Optional[str] = None) -> Dict:

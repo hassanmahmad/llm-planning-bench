@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import subprocess
-import tempfile
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -15,40 +12,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logg
 from prompts.shell import SYSTEM_PROMPT_PDDL
 from utils.answer_postprocessor import formatter, clean_response_text
 from utils.logging_utils import get_logger
-from utils.metrics_extractor import parse_val_output, run_val_verbose
+from utils.metrics_extractor import ZERO_METRICS, parse_val_output
 from utils.run_recorder import RunRecorder
+from utils.validator import validate_plan_verbose
 
 hf_logging.set_verbosity_warning()
-
-_EMPTY_METRICS: Dict[str, Any] = {
-    "plan_length": 0,
-    "solves_problem": False,
-    "valid_action_percent": 0.0,
-    "consecutive_valid_steps": 0,
-    "logical_violations": 0,
-}
-
-
-def _val_on_plan_text(
-    domain_path: str, problem_path: str, plan_text: str
-) -> Tuple[Dict[str, Any], str]:
-    """Write plan_text to a temp file, run VAL -v once, return (metrics, raw_output)."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".plan", delete=False, encoding="utf-8"
-    ) as tmp:
-        tmp.write(plan_text)
-        tmp_path = tmp.name
-    try:
-        raw = run_val_verbose(domain_path, problem_path, tmp_path)
-    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
-        get_logger(__name__).warning("VAL unavailable or timed out: %s", exc)
-        raw = ""
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-    return parse_val_output(raw), raw
 
 logger = get_logger(__name__)
 
@@ -279,7 +247,7 @@ class ModelManager:
                     recorder.record_iter(
                         iteration=iteration,
                         plan_text="",
-                        metrics=_EMPTY_METRICS,
+                        metrics=ZERO_METRICS,
                         wallclock_s=wallclock_s,
                         prompt_tokens=prompt_tokens,
                         completion_tokens=completion_tokens,
@@ -296,9 +264,10 @@ class ModelManager:
 
             plan_text = "\n".join(plan_actions)
             last_plan_text = plan_text
-            metrics, raw_val_output = _val_on_plan_text(
+            is_valid, raw_val_output = validate_plan_verbose(
                 domain_path, problem_path, plan_text
             )
+            metrics = parse_val_output(raw_val_output)
 
             if recorder is not None:
                 recorder.record_iter(
@@ -310,7 +279,7 @@ class ModelManager:
                     completion_tokens=completion_tokens,
                 )
 
-            if metrics["solves_problem"]:
+            if is_valid:
                 logger.info("Valid plan produced in %d iteration(s)", iteration)
                 if recorder is not None:
                     recorder.finalize(

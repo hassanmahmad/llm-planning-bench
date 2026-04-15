@@ -83,9 +83,9 @@ def test_dependencies():
         try:
             module = __import__(package)
             version = getattr(module, '__version__', 'unknown')
-            print(f"✓ {package}: {version}")
+            print(f"[OK] {package}: {version}")
         except ImportError:
-            print(f"✗ {package}: NOT FOUND")
+            print(f"[FAIL] {package}: NOT FOUND")
         except Exception as e:
             print(f"? {package}: ERROR - {e}")
 
@@ -144,36 +144,35 @@ def test_val_integration():
     print_section("VAL VALIDATOR TEST")
     
     try:
-        from utils.validator import get_val_executable, validate_plan_from_text
-        
+        from utils.validator import get_val_executable, validate_plan_verbose
+
         print_subsection("VAL Executable Check")
         val_path = get_val_executable()
         print(f"VAL executable path: {val_path}")
-        
+
         val_file = Path(val_path)
         if val_file.exists():
-            print(f"✓ VAL executable found")
+            print(f"[OK] VAL executable found")
             print(f"  File size: {val_file.stat().st_size} bytes")
             print(f"  Executable: {os.access(val_path, os.X_OK)}")
         else:
-            print(f"✗ VAL executable not found")
+            print(f"[FAIL] VAL executable not found")
             return False
-        
-        print_subsection("VAL Function Test")
-        # Test with dummy data (will fail validation but test the interface)
+
+        print_subsection("VAL Function Test (validate_plan_verbose)")
+        # Pass garbage so VAL fails fast — we're testing the interface, not validity.
         dummy_domain = "(define (domain test))"
         dummy_problem = "(define (problem test-prob))"
         dummy_plan = "(action1 param1)"
-        
+
         try:
-            result = validate_plan_from_text(dummy_domain, dummy_problem, dummy_plan)
-            print(f"✓ VAL validation interface working")
-            print(f"  Result type: {type(result)}")
-            print(f"  Has 'valid' key: {'valid' in result}")
-            print(f"  Has 'error' key: {'error' in result}")
+            is_valid, raw = validate_plan_verbose(dummy_domain, dummy_problem, dummy_plan)
+            print(f"[OK] validate_plan_verbose interface working")
+            print(f"  is_valid: {is_valid}")
+            print(f"  raw stdout length: {len(raw)} chars")
             return True
         except Exception as val_e:
-            print(f"✗ VAL validation failed: {val_e}")
+            print(f"[FAIL] VAL validation failed: {val_e}")
             return False
             
     except Exception as e:
@@ -203,7 +202,7 @@ def test_model_detection():
                     # Create manager with the model path
                     manager = ModelManager(str(model_path))
                     model_type = manager.model_type
-                    print(f"✓ Detected model type: {model_type}")
+                    print(f"[OK] Detected model type: {model_type}")
                     models_found = True
                     
                     # List some model files
@@ -220,7 +219,7 @@ def test_model_detection():
                         print(f"  Model size (all files): {total_size / 1e9:.1f} GB")
 
                 except Exception as model_e:
-                    print(f"✗ Model detection failed: {model_e}")
+                    print(f"[FAIL] Model detection failed: {model_e}")
             else:
                 print(f"Model path not found: {model_path}")
         
@@ -228,7 +227,7 @@ def test_model_detection():
             print("No models found, but ModelManager class is available")
             # Just test that we can import it
             from core.model_manager import ModelManager
-            print("✓ ModelManager class imported successfully")
+            print("[OK] ModelManager class imported successfully")
         
         return True
         
@@ -284,7 +283,7 @@ def run_all_tests():
     
     print("\nDetailed Results:")
     for test_name, result in results.items():
-        status = "✓ PASS" if result['success'] else "✗ FAIL"
+        status = "[OK] PASS" if result['success'] else "[FAIL] FAIL"
         time_str = f"{result['time']:.2f}s"
         print(f"  {status} {test_name} ({time_str})")
         

@@ -1,130 +1,122 @@
 #!/usr/bin/env python3
-"""
-Test script to verify VAL validator integration.
+"""Verify VAL validator integration.
+
+Covers:
+- VAL executable detection / `--help` smoke.
+- The canonical `validate_plan_verbose` (STEPS.md §1.3): contract is
+  `(is_valid, raw_stdout)`; raw stdout must be parsable by
+  `metrics_extractor.parse_val_output`.
+- Legacy `validate_plan_from_text` — still in place for backwards
+  compatibility, but no production caller goes through it anymore.
 """
 
+import subprocess
 import sys
-import os
 from pathlib import Path
 
-# Add src to path
 src_path = Path(__file__).parent.parent
 sys.path.insert(0, str(src_path))
 
-from utils.validator import validate_plan, validate_plan_from_text, get_val_executable
 from utils.configuration import load_config
+from utils.metrics_extractor import parse_val_output
+from utils.validator import (
+    get_val_executable,
+    validate_plan_from_text,
+    validate_plan_verbose,
+)
+
 
 def test_val_integration():
-    """Test VAL validator integration."""
-    
     print("Testing VAL Validator Integration")
     print("=" * 50)
-    
-    # Test 1: Configuration loading
+
+    # --- 1. Configuration loading -------------------------------------
     try:
         config = load_config()
-        val_path = config.get("VAL_PATH")
-        val_executable = config.get("VAL_EXECUTABLE")
-        val_timeout = config.get("VAL_TIMEOUT")
-        
-        print(f"VAL Configuration:")
-        print(f"  VAL_PATH: {val_path}")
-        print(f"  VAL_EXECUTABLE: {val_executable}")
-        print(f"  VAL_TIMEOUT: {val_timeout}")
-        
     except Exception as e:
         print(f"Configuration error: {e}")
         return False
-    
-    # Test 2: VAL executable detection
+    print("VAL Configuration:")
+    print(f"  VAL_PATH: {config.get('VAL_PATH')}")
+    print(f"  VAL_EXECUTABLE: {config.get('VAL_EXECUTABLE')}")
+    print(f"  VAL_TIMEOUT: {config.get('VAL_TIMEOUT')}")
+
+    # --- 2. Executable detection --------------------------------------
+    val_exec_path = get_val_executable()
+    print(f"\nVAL Executable Detection:")
+    print(f"  Detected path: {val_exec_path}")
+    val_present = Path(val_exec_path).exists()
+    print(f"  Status: {'Found' if val_present else 'Not found (will try system PATH)'}")
+
+    # --- 3. --help smoke ---------------------------------------------
+    print(f"\nVAL Executable Test:")
     try:
-        val_exec_path = get_val_executable()
-        print(f"\nVAL Executable Detection:")
-        print(f"  Detected path: {val_exec_path}")
-        
-        # Check if executable exists
-        if Path(val_exec_path).exists():
-            print(f"  Status: Found")
+        result = subprocess.run(
+            [val_exec_path, "--help"], capture_output=True, text=True, timeout=10
+        )
+        # VAL's --help may exit non-zero; success is "we got SOME output".
+        if result.stdout or "usage" in (result.stdout + result.stderr).lower():
+            print(f"  VAL executable responds")
+            print(f"  Help output sample: {(result.stdout or result.stderr)[:100]}...")
         else:
-            print(f"  Status: Not found (will try system PATH)")
-        
-    except Exception as e:
-        print(f"VAL detection error: {e}")
-        return False
-    
-    # Test 3: VAL executable test run
-    try:
-        print(f"\nVAL Executable Test:")
-        
-        # Try to run VAL with --help to test if it works
-        import subprocess
-        result = subprocess.run([val_exec_path, "--help"], capture_output=True, text=True, timeout=10)
-        
-        if result.returncode == 0 or "usage" in result.stdout.lower() or "validate" in result.stdout.lower():
-            print(f"  VAL executable works correctly")
-            print(f"  Help output sample: {result.stdout[:100]}...")
-        else:
-            print(f"  VAL executable may have issues")
-            print(f"  Return code: {result.returncode}")
-            print(f"  Output: {result.stdout[:200]}")
-            
+            print(f"  VAL executable returned no output (rc={result.returncode})")
     except subprocess.TimeoutExpired:
-        print(f"  VAL executable timeout (this might be normal)")
+        print("  VAL executable timeout (10s)")
     except FileNotFoundError:
         print(f"  VAL executable not found at: {val_exec_path}")
-        print(f"  Please ensure VAL is built and available")
         return False
-    except Exception as e:
-        print(f"  VAL test error: {e}")
-    
-    # Test 4: Validator function availability
-    print(f"\nValidator Functions:")
-    print(f"  validate_plan: Available")
-    print(f"  validate_plan_from_text: Available")
-    print(f"  get_val_executable: Available")
-    
-    # Test 5: Sample domains check
+
+    # --- 4. Sample-domain validation ----------------------------------
     print(f"\nSample Domain Check:")
-    
-    tetris_domain = Path("src/data/tetris/tetris_domain.pddl")
-    tetris_problem = Path("src/data/tetris/instance-01.pddl")
-    
-    if tetris_domain.exists() and tetris_problem.exists():
-        print(f"  Tetris domain available for testing")
-        print(f"    Domain: {tetris_domain}")
-        print(f"    Problem: {tetris_problem}")
-        
-        # Test validation with a simple (likely invalid) plan
-        sample_plan = "(move_square pos1 pos2 piece1)"
-        
-        try:
-            result = validate_plan_from_text(str(tetris_domain), str(tetris_problem), sample_plan)
-            print(f"  Sample validation test:")
-            print(f"    Valid: {result['valid']}")
-            if result['error']:
-                print(f"    Error: {result['error'][:100]}...")
-            else:
-                print(f"    No errors")
-                
-        except Exception as e:
-            print(f"  Sample validation failed: {e}")
-    else:
-        print(f"  No test domains available")
+    project_root = src_path.parent
+    tetris_domain = project_root / "src/data/tetris/tetris_domain.pddl"
+    tetris_problem = project_root / "src/data/tetris/instance-01.pddl"
+
+    if not (tetris_domain.exists() and tetris_problem.exists()):
+        print("  No tetris fixture available — skipping sample validation")
         print(f"    Domain exists: {tetris_domain.exists()}")
         print(f"    Problem exists: {tetris_problem.exists()}")
-    
+        return True
+
+    sample_plan = "(move_square pos1 pos2 piece1)"  # garbage, expected invalid
+
+    # 4a. canonical validator (STEPS.md §1.3)
+    print(f"\n  validate_plan_verbose (canonical):")
+    is_valid, raw = validate_plan_verbose(
+        str(tetris_domain), str(tetris_problem), sample_plan
+    )
+    print(f"    is_valid: {is_valid}")
+    print(f"    raw stdout length: {len(raw)} chars")
+    metrics = parse_val_output(raw)
+    print(f"    parsed metrics: {metrics}")
+    assert isinstance(is_valid, bool), "is_valid must be a bool"
+    assert isinstance(raw, str), "raw stdout must be a str"
+    assert set(metrics) == {
+        "valid_action_percent",
+        "consecutive_valid_steps",
+        "logical_violations",
+        "plan_length",
+        "solves_problem",
+    }, f"unexpected metrics keys: {set(metrics)}"
+
+    # 4b. legacy wrapper (still callable, no production caller now)
+    print(f"\n  validate_plan_from_text (legacy):")
+    legacy = validate_plan_from_text(str(tetris_domain), str(tetris_problem), sample_plan)
+    print(f"    valid: {legacy.get('valid')}")
+    print(f"    error head: {(legacy.get('error') or '')[:80]!r}")
+    assert "valid" in legacy and "error" in legacy, (
+        "legacy validate_plan_from_text contract changed"
+    )
+
     print(f"\nVAL Integration test completed!")
     return True
 
+
 if __name__ == "__main__":
     success = test_val_integration()
-    
     if success:
-        print(f"\nVAL validator is ready for use!")
-        print(f"To use in code:")
-        print(f"  from utils.validator import validate_plan_from_text")
-        print(f"  result = validate_plan_from_text(domain, problem, plan)")
+        print("\nVAL validator is ready for use!")
+        print("Canonical entry point: utils.validator.validate_plan_verbose")
     else:
-        print(f"\nVAL integration needs attention.")
-    
+        print("\nVAL integration needs attention.")
     sys.exit(0 if success else 1)

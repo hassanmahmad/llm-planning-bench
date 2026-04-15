@@ -1,45 +1,35 @@
-"""VAL-verbose metrics extractor.
+"""VAL-verbose metrics parser.
 
-Ports run_val_verbose + parse_val_output from Project A's
-utils/dataset_generator.py (L23-63), stripped of all meta-network
-coupling. Pure parser + subprocess wrapper; no filesystem side effects
-beyond the subprocess call and optional tempfile for text input.
+`parse_val_output` is ported from Project A's utils/dataset_generator.py
+(L38-63), stripped of all meta-network coupling, and left as a pure
+function.
 
-See STEPS.md §1.1.
+After STEPS.md §1.3 the VAL subprocess call lives in
+`utils.validator.validate_plan_verbose` — this module only composes
+that helper with the parser. See STEPS.md §1.1 for the port and §1.3
+for the validator unification.
 """
 
 from __future__ import annotations
 
-import os
-import subprocess
-import tempfile
-from typing import Dict, Optional
+from typing import Dict
 
 try:
-    from .validator import get_val_executable
+    from .validator import validate_plan_verbose
 except ImportError:
+    import os
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from src.utils.validator import get_val_executable
+    from src.utils.validator import validate_plan_verbose
 
 
-def run_val_verbose(
-    domain_file: str,
-    problem_file: str,
-    plan_file: str,
-    val_executable: Optional[str] = None,
-    timeout: int = 300,
-) -> str:
-    """Run VAL with -v on (domain, problem, plan) and return stdout."""
-    if val_executable is None:
-        val_executable = get_val_executable()
-    result = subprocess.run(
-        [val_executable, "-v", domain_file, problem_file, plan_file],
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    return result.stdout
+ZERO_METRICS: Dict = {
+    "plan_length": 0,
+    "solves_problem": False,
+    "valid_action_percent": 0.0,
+    "consecutive_valid_steps": 0,
+    "logical_violations": 0,
+}
 
 
 def parse_val_output(val_output: str) -> Dict:
@@ -69,46 +59,11 @@ def parse_val_output(val_output: str) -> Dict:
     }
 
 
-def extract(
-    domain_path: str,
-    problem_path: str,
-    plan_path: str,
-    val_executable: Optional[str] = None,
-    timeout: int = 300,
-) -> Dict:
-    """End-to-end: run VAL verbose on a plan file, return parsed metrics."""
-    return parse_val_output(
-        run_val_verbose(domain_path, problem_path, plan_path, val_executable, timeout)
-    )
-
-
 def extract_from_text(
     domain_path: str,
     problem_path: str,
     plan_text: str,
-    val_executable: Optional[str] = None,
-    timeout: int = 300,
 ) -> Dict:
-    """Run VAL verbose on plan text via a temp file.
-
-    Keeps only PDDL action lines (those starting with '(') and comment
-    lines, so trailing metadata like 'Generated in N iterations.' does
-    not poison the VAL parse.
-    """
-    kept = [
-        line for line in plan_text.splitlines()
-        if not line.strip() or line.lstrip().startswith(("(", ";"))
-    ]
-    cleaned = "\n".join(kept)
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".plan", delete=False, encoding="utf-8"
-    ) as tmp:
-        tmp.write(cleaned)
-        tmp_path = tmp.name
-    try:
-        return extract(domain_path, problem_path, tmp_path, val_executable, timeout)
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
+    """Run VAL -v via the unified validator, return parsed metrics."""
+    _is_valid, raw = validate_plan_verbose(domain_path, problem_path, plan_text)
+    return parse_val_output(raw)

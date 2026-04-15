@@ -161,13 +161,13 @@ Replace Project B's monolithic `src/prompts/prompts.py` with a 3-file module:
 - [x] Re-run `scripts/local/smoke_test.sh` — confirm stop-on-success path and 4-iter-fail path both write expected files
 
 ### 1.3 Unify the validator [P1, 3–4h]
-- [ ] In [`../dascenzogentili2425-master/src/utils/validator.py`](../dascenzogentili2425-master/src/utils/validator.py), add:
+- [x] In [`../dascenzogentili2425-master/src/utils/validator.py`](../dascenzogentili2425-master/src/utils/validator.py), add:
   ```python
   def validate_plan_verbose(domain_path, problem_path, plan_text) -> tuple[bool, str]:
       """Run VAL with -v, return (is_valid, raw_stdout)."""
   ```
-- [ ] `metrics_extractor` calls this helper
-- [ ] Delete any legacy validator call sites from Project A's code that got copied in
+- [x] `metrics_extractor` calls this helper
+- [x] Delete any legacy validator call sites from Project A's code that got copied in
 
 ### 1.4 Parametric SLURM script [P1, 4–5.5h]
 Base template: [`../dascenzogentili2425-master/scripts/gemma3_iters_4_tetris.sh`](../dascenzogentili2425-master/scripts/gemma3_iters_4_tetris.sh)

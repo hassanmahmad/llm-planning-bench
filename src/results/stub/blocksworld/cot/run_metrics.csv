@@ -10,4 +10,4 @@ stub,blocksworld,cot,instance-01,1,"(unstack b2 b3)
 (pickup b1)
 (stack b1 b3)
 (pickup b2)
-(stack b2 b1)",12,True,100.0,12,0,0.019,,
+(stack b2 b1)",12,True,100.0,12,0,0.023,,

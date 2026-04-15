@@ -49,7 +49,7 @@ def test_model_manager_with_actual_models():
         try:
             # Test ModelManager initialization
             manager = ModelManager(str(model_dir))
-            print(f"✓ ModelManager initialized for {model_dir.name}")
+            print(f"[OK] ModelManager initialized for {model_dir.name}")
             print(f"  Detected type: {manager.model_type}")
             print(f"  Model path: {manager.weights_path}")
             
@@ -74,9 +74,9 @@ def test_model_manager_with_actual_models():
             for key_file in key_files:
                 file_path = model_dir / key_file
                 if file_path.exists():
-                    print(f"  ✓ {key_file}")
+                    print(f"  [OK] {key_file}")
                 else:
-                    print(f"  ✗ {key_file} (missing)")
+                    print(f"  [FAIL] {key_file} (missing)")
                     missing_files.append(key_file)
             
             # Check if model is ready for loading
@@ -87,10 +87,10 @@ def test_model_manager_with_actual_models():
             model_ready = has_model_files and has_config and has_tokenizer
             
             print(f"\nModel Readiness Assessment:")
-            print(f"  Model weights: {'✓' if has_model_files else '✗'}")
-            print(f"  Configuration: {'✓' if has_config else '✗'}")
-            print(f"  Tokenizer: {'✓' if has_tokenizer else '✗'}")
-            print(f"  Overall ready: {'✓' if model_ready else '✗'}")
+            print(f"  Model weights: {'[OK]' if has_model_files else '[FAIL]'}")
+            print(f"  Configuration: {'[OK]' if has_config else '[FAIL]'}")
+            print(f"  Tokenizer: {'[OK]' if has_tokenizer else '[FAIL]'}")
+            print(f"  Overall ready: {'[OK]' if model_ready else '[FAIL]'}")
             
             if model_ready:
                 print(f"\n  This model appears ready for loading!")
@@ -138,11 +138,11 @@ def test_model_loading_preparation():
         
         # Memory recommendation
         if gpu_memory >= 24:
-            print(f"  ✓ Sufficient GPU memory for most models")
+            print(f"  [OK] Sufficient GPU memory for most models")
         elif gpu_memory >= 12:
-            print(f"  ⚠ GPU memory may be limited for large models")  
+            print(f"  [WARN] GPU memory may be limited for large models")  
         else:
-            print(f"  ✗ GPU memory likely insufficient for large models")
+            print(f"  [FAIL] GPU memory likely insufficient for large models")
     else:
         print(f"  Running on CPU - model loading will be very slow")
     
@@ -151,7 +151,7 @@ def test_model_loading_preparation():
         from transformers import __version__ as transformers_version
         print(f"  Transformers version: {transformers_version}")
     except ImportError:
-        print(f"  ✗ Transformers library not available")
+        print(f"  [FAIL] Transformers library not available")
         return False
     
     # Check torch version
@@ -165,11 +165,11 @@ def test_model_loading_preparation():
         print(f"  System RAM: {ram_gb:.1f} GB total, {available_ram_gb:.1f} GB available")
         
         if available_ram_gb >= 32:
-            print(f"  ✓ Sufficient system RAM")
+            print(f"  [OK] Sufficient system RAM")
         elif available_ram_gb >= 16:
-            print(f"  ⚠ System RAM may be limited")
+            print(f"  [WARN] System RAM may be limited")
         else:
-            print(f"  ✗ Low system RAM may cause issues")
+            print(f"  [FAIL] Low system RAM may cause issues")
             
     except ImportError:
         print(f"  RAM check skipped (psutil not available)")
