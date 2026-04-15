@@ -1,0 +1,3 @@
+cluster: local
+val_path: ./VAL/Validate
+model_backend: stub

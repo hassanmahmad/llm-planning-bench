@@ -3,23 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .file_manager import DomainBundle, FileManager
 from .model_manager import ModelManager
-from prompts.prompts import (
-    add_constraints_to_prompt,
-    add_examples_to_prompt,
-    chain_of_thought_prompt,
-    citycar_problem_prompt,
-    citycar_validation_feedback,
-    generic_pddl_prompt,
-    tetris_problem_prompt,
-    tetris_validation_feedback,
-)
+from prompts import compose
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
+
+def _feedback_adapter(initial_prompt: str, plan_text: str, error_msg: str) -> str:
+    """Bridge ModelManager's (initial_prompt, plan, error) → compose's (val_output, plan)."""
+    return compose.build_feedback_prompt(error_msg, plan_text)
 
 
 class PDDLProcessor:
@@ -41,13 +37,13 @@ class PDDLProcessor:
         domain_data: DomainBundle,
         *,
         max_iterations: int = 3,
-        enable_cot: bool = False,
+        condition: str = "baseline",
         add_system_prompt: bool = True,
         sampling: bool = False,
         **generation_kwargs,
     ) -> Dict[str, Any]:
-        domain_output_dir = self.output_dir / domain_data.domain_name
-        domain_output_dir.mkdir(exist_ok=True)
+        domain_output_dir = self.output_dir / domain_data.domain_name / condition
+        domain_output_dir.mkdir(parents=True, exist_ok=True)
         logger.info(
             "Processing domain %s (%d problems)",
             domain_data.domain_name,
@@ -76,7 +72,7 @@ class PDDLProcessor:
                     problem_path=problem_path,
                     output_dir=domain_output_dir,
                     max_iterations=max_iterations,
-                    enable_cot=enable_cot,
+                    condition=condition,
                     add_system_prompt=add_system_prompt,
                     sampling=sampling,
                     **generation_kwargs,
@@ -121,7 +117,7 @@ class PDDLProcessor:
         domains_data: List[DomainBundle],
         *,
         max_iterations: int = 3,
-        enable_cot: bool = False,
+        condition: str = "baseline",
         **kwargs,
     ) -> Dict[str, Any]:
         logger.info("Starting batch processing of %d domain(s)", len(domains_data))
@@ -139,7 +135,7 @@ class PDDLProcessor:
             result = self.process_domain_with_validation(
                 domain_bundle,
                 max_iterations=max_iterations,
-                enable_cot=enable_cot,
+                condition=condition,
                 **kwargs,
             )
             batch_results["domain_results"].append(result)
@@ -172,7 +168,7 @@ class PDDLProcessor:
         problem_path: Path,
         output_dir: Path,
         max_iterations: int,
-        enable_cot: bool,
+        condition: str,
         add_system_prompt: bool,
         sampling: bool,
         **generation_kwargs,
@@ -181,14 +177,9 @@ class PDDLProcessor:
         if problem_text is None:
             raise ValueError(f"Unable to read problem file {problem_path}")
 
-        prompt = self._build_prompt(
-            domain_name=domain.domain_name,
-            domain_text=domain.domain_text,
-            problem_text=problem_text,
-            enable_cot=enable_cot,
+        prompt = compose.build_problem_prompt(
+            domain.domain_name, condition, domain.domain_text, problem_text
         )
-
-        validation_feedback_fn = self._get_validation_feedback_fn(domain.domain_name)
 
         response_text, iterations, is_valid = self.model_manager.iterative_planning_with_validation(
             domain_path=str(domain.domain_path),
@@ -196,7 +187,7 @@ class PDDLProcessor:
             initial_prompt=prompt,
             max_iterations=max_iterations,
             add_system_prompt=add_system_prompt,
-            validation_feedback_fn=validation_feedback_fn,
+            validation_feedback_fn=_feedback_adapter,
             sampling=sampling,
             **generation_kwargs,
         )
@@ -208,7 +199,7 @@ class PDDLProcessor:
             f"Problem: {problem_path.stem}\n"
             f"Iterations: {iterations}\n"
             f"Plan Valid: {is_valid}\n"
-            f"Chain of Thought: {enable_cot}\n"
+            f"Condition: {condition}\n"
         )
         self.file_manager.save_file(plan_path, response_text + metadata)
 
@@ -219,113 +210,8 @@ class PDDLProcessor:
             "plan_valid": is_valid,
             "iterations": iterations,
             "response_length": len(response_text),
-            "cot_enabled": enable_cot,
+            "condition": condition,
         }
-
-    # ------------------------------------------------------------------
-    # Prompt construction
-    # ------------------------------------------------------------------
-
-    def _build_prompt(
-        self,
-        *,
-        domain_name: str,
-        domain_text: str,
-        problem_text: str,
-        enable_cot: bool,
-        examples: Optional[List[str]] = None,
-        constraints: Optional[List[str]] = None,
-    ) -> str:
-        top_instruction = (
-            "OUTPUT ONLY: Provide the final PDDL action sequence, one action per line. "
-            "Do NOT ask clarifying questions; rely solely on the DOMAIN and PROBLEM provided."
-        )
-
-        base_prompt = self._create_domain_prompt(
-            domain_name, domain_text, problem_text, include_examples=False
-        )
-        composed = f"{top_instruction}\n\n{base_prompt}"
-
-        if not examples:
-            examples = self._load_domain_examples(domain_name)
-        if examples:
-            try:
-                composed = add_examples_to_prompt(composed, examples)
-            except Exception:
-                composed += "\n\n" + "\n\n".join(examples)
-
-        if constraints:
-            try:
-                composed = add_constraints_to_prompt(composed, constraints)
-            except Exception:
-                composed += "\n\nAdditional constraints:\n" + "\n".join(constraints)
-
-        if enable_cot:
-            try:
-                cot_text = self._chain_of_thought(domain_name, domain_text, problem_text)
-                composed += "\n\n" + cot_text
-            except Exception:
-                composed += "\n\nThink step by step before finalizing the plan."
-
-        return composed
-
-    def _create_domain_prompt(
-        self,
-        domain_name: str,
-        domain_text: str,
-        problem_text: str,
-        include_examples: bool,
-    ) -> str:
-        domain_lower = domain_name.lower()
-        if "tetris" in domain_lower:
-            logger.debug("Using Tetris prompt template")
-            return tetris_problem_prompt(domain_text, problem_text, include_examples)
-        if "citycar" in domain_lower:
-            logger.debug("Using CityCar prompt template")
-            return citycar_problem_prompt(domain_text, problem_text, include_examples)
-        logger.debug("Using generic prompt template for %s", domain_name)
-        return generic_pddl_prompt(domain_text, problem_text)
-
-    def _chain_of_thought(self, domain_name: str, domain_text: str, problem_text: str) -> str:
-        domain_lower = domain_name.lower()
-        if "tetris" in domain_lower:
-            from prompts.prompts import tetris_chain_of_thought
-
-            return tetris_chain_of_thought(domain_text, problem_text)
-        if "citycar" in domain_lower:
-            from prompts.prompts import citycar_chain_of_thought
-
-            return citycar_chain_of_thought(domain_text, problem_text)
-        return chain_of_thought_prompt(domain_text, problem_text)
-
-    def _load_domain_examples(self, domain_name: str) -> Optional[List[str]]:
-        try:
-            from prompts import prompts as prompts_module
-
-            domain_lower = domain_name.lower()
-            if "tetris" in domain_lower and hasattr(
-                prompts_module, "_format_tetris_examples"
-            ):
-                return prompts_module._format_tetris_examples()
-            if "citycar" in domain_lower and hasattr(
-                prompts_module, "_format_citycar_examples"
-            ):
-                return prompts_module._format_citycar_examples()
-        except Exception:
-            logger.debug("Example loading failed for %s", domain_name)
-        return None
-
-    # ------------------------------------------------------------------
-    # Validation feedback helpers
-    # ------------------------------------------------------------------
-
-    def _get_validation_feedback_fn(self, domain_name: str):
-        domain_lower = domain_name.lower()
-        if "tetris" in domain_lower:
-            return tetris_validation_feedback
-        if "citycar" in domain_lower:
-            return citycar_validation_feedback
-        return None
 
     # ------------------------------------------------------------------
     # Metadata

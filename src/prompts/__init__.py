@@ -1,40 +1,23 @@
-"""
-Prompt templates for PDDL planning tasks
+"""Prompt package for PDDL planning.
 
-This package contains various prompt templates and system prompts for different
-planning domains and interaction patterns.
+Split into three files per STEPS.md §0.4:
+  - shell.py:        SYSTEM_PROMPT_PDDL, COT_SCAFFOLD, VALIDATION_FEEDBACK_TEMPLATE
+  - descriptions.py: DOMAIN_DESCRIPTIONS (verbatim from source projects)
+  - compose.py:      build_problem_prompt(domain, condition, pddl_domain, pddl_problem)
+                     build_feedback_prompt(val_output, previous_plan)
+
+All model-facing prompt construction goes through compose.build_problem_prompt.
 """
 
-from .prompts import (
-    system_prompt_pddl,
-    tetris_problem_prompt,
-    generic_pddl_prompt,
-    chain_of_thought_prompt,
-    validation_feedback_prompt,
-    tetris_chain_of_thought,
-    tetris_validation_feedback,
-    citycar_problem_prompt,
-    citycar_chain_of_thought,
-    citycar_validation_feedback,
-    add_examples_to_prompt,
-    add_constraints_to_prompt,
-    optimization_prompt,
-    incremental_planning_prompt
-)
+from .shell import SYSTEM_PROMPT_PDDL, COT_SCAFFOLD, VALIDATION_FEEDBACK_TEMPLATE
+from .compose import build_problem_prompt, build_feedback_prompt
+from .descriptions import DOMAIN_DESCRIPTIONS
 
 __all__ = [
-    'system_prompt_pddl',
-    'tetris_problem_prompt', 
-    'generic_pddl_prompt',
-    'chain_of_thought_prompt',
-    'validation_feedback_prompt',
-    'tetris_chain_of_thought',
-    'tetris_validation_feedback',
-    'citycar_problem_prompt',
-    'citycar_chain_of_thought',
-    'citycar_validation_feedback',
-    'add_examples_to_prompt',
-    'add_constraints_to_prompt',
-    'optimization_prompt',
-    'incremental_planning_prompt'
+    "SYSTEM_PROMPT_PDDL",
+    "COT_SCAFFOLD",
+    "VALIDATION_FEEDBACK_TEMPLATE",
+    "DOMAIN_DESCRIPTIONS",
+    "build_problem_prompt",
+    "build_feedback_prompt",
 ]

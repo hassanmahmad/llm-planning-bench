@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logging
 
-from prompts.prompts import system_prompt_pddl
+from prompts.shell import SYSTEM_PROMPT_PDDL
 from utils.answer_postprocessor import formatter, clean_response_text
 from utils.logging_utils import get_logger
 from utils.validator import validate_plan_from_text
@@ -267,7 +267,7 @@ class ModelManager:
     ) -> List[Dict[str, str]]:
         messages: List[Dict[str, str]] = []
         if add_system_prompt:
-            messages.append({"role": "system", "content": system_prompt_pddl})
+            messages.append({"role": "system", "content": SYSTEM_PROMPT_PDDL})
         messages.append({"role": "user", "content": prompt})
         return messages
 
@@ -301,9 +301,9 @@ class ModelManager:
             except Exception:
                 logger.exception("Custom validation feedback failed")
         try:
-            from prompts.prompts import validation_feedback_prompt
+            from prompts import compose
 
-            return validation_feedback_prompt(initial_prompt, plan_text, error_msg)
+            return compose.build_feedback_prompt(error_msg, plan_text)
         except Exception:
             return f"The plan is invalid. Error: {error_msg}. Please provide a corrected plan."
 

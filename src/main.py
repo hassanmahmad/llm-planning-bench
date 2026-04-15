@@ -17,6 +17,16 @@ from utils.logging_utils import configure_logging, get_logger
 
 def _build_parser(config: Dict) -> argparse.ArgumentParser:
     """Create the CLI parser with defaults pulled from config.yml."""
+    domains_cfg = config.get("domains") or {}
+    domain_choices = domains_cfg.get("available") or domains_cfg.get("active") or []
+    model_choices = (config.get("models") or {}).get("active") or []
+    # stub is always available; 'auto' defers to weights_path basename detection
+    model_choices = sorted(set(list(model_choices) + ["stub", "auto"]))
+    condition_choices = config.get("conditions") or ["baseline", "cot"]
+
+    generation = config.get("generation") or {}
+    iteration = config.get("iteration") or {}
+
     parser = argparse.ArgumentParser(
         description="PDDL Planning with Large Language Models",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -30,7 +40,7 @@ def _build_parser(config: Dict) -> argparse.ArgumentParser:
     parser.add_argument(
         "--weights_path",
         default=config.get("MODEL_PATH", "src/models"),
-        help="Directory with model weights",
+        help="Directory with model weights (ignored for --model stub)",
     )
     parser.add_argument(
         "--output_dir",
@@ -46,13 +56,28 @@ def _build_parser(config: Dict) -> argparse.ArgumentParser:
     parser.add_argument(
         "--domain",
         type=str,
+        choices=domain_choices or None,
         help="Process only the specified domain name",
     )
     parser.add_argument(
+        "--instance",
+        type=str,
+        default=None,
+        help="Restrict to a single problem (filename stem, e.g. instance-01)",
+    )
+    parser.add_argument(
+        "--condition",
+        choices=condition_choices,
+        default="baseline",
+        help="Prompting condition: 'baseline' or 'cot'",
+    )
+    parser.add_argument(
+        "--iterations",
         "--max_iterations",
+        dest="max_iterations",
         type=int,
-        default=config.get("DEFAULT_ITERATIONS", 1),
-        help="Maximum validation iterations per problem",
+        default=iteration.get("max_iterations", config.get("DEFAULT_ITERATIONS", 4)),
+        help="Maximum validation iterations per problem (stop_on_success)",
     )
 
     parser.add_argument(
@@ -63,19 +88,19 @@ def _build_parser(config: Dict) -> argparse.ArgumentParser:
     parser.add_argument(
         "--temperature",
         type=float,
-        default=config.get("TEMPERATURE", 0.1),
+        default=generation.get("temperature", config.get("TEMPERATURE", 0.6)),
         help="Sampling temperature",
     )
     parser.add_argument(
         "--top_k",
         type=int,
-        default=config.get("TOP_K", 10),
+        default=generation.get("top_k", config.get("TOP_K", 10)),
         help="Top-k for sampling",
     )
     parser.add_argument(
         "--max_tokens",
         type=int,
-        default=config.get("MAX_TOKENS", 1024),
+        default=generation.get("max_new_tokens", config.get("MAX_TOKENS", 4096)),
         help="Maximum tokens to generate per response",
     )
 
@@ -85,12 +110,6 @@ def _build_parser(config: Dict) -> argparse.ArgumentParser:
         action=boolean_action,
         default=True,
         help="Include the system prompt when talking to the model",
-    )
-    parser.add_argument(
-        "--cot",
-        action=boolean_action,
-        default=True,
-        help="Enable chain-of-thought prompting",
     )
     parser.add_argument(
         "--include_prompt",
@@ -112,9 +131,15 @@ def _build_parser(config: Dict) -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--model",
-        choices=["llama3", "phi4", "gemma3", "kimi", "auto"],
+        choices=model_choices,
         default="auto",
-        help="Explicit model type override",
+        help="Model alias (from config.yml models.active) or 'stub' / 'auto'",
+    )
+    parser.add_argument(
+        "--cluster",
+        choices=["local", "leonardo"],
+        default="local",
+        help="Execution target — 'local' activates Project B's local overrides",
     )
     parser.add_argument(
         "--log-level",
@@ -178,9 +203,8 @@ def _validate_paths(problems_path: str, weights_path: str, logger: logging.Logge
 
 
 def _resolve_output_dir(args: argparse.Namespace) -> str:
-    """Append the model alias to the output directory when available."""
+    """Build src/results/{model}/ — {domain}/{condition} are appended by the processor."""
     output_dir = Path(args.output_dir)
-    model_alias = None
 
     if args.model and args.model.lower() != "auto":
         model_alias = args.model.lower()

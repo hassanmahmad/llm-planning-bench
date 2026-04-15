@@ -1,27 +1,47 @@
-# Model and data paths configuration
-MODEL_PATH: "src/models/Phi4"  # Llama4 or any other model directory
-PROBLEMS_PATH: "src/data"        # Root directory containing domain folders (tetris, citycar, etc.)
-MODEL_OUTPUT: "src/results"      # Alias for main.py compatibility
+# Paths
+MODEL_PATH: "src/models"           # base directory; --weights_path overrides
+PROBLEMS_PATH: "src/data"
+MODEL_OUTPUT: "src/results"
 
 # Validation settings
-VAL_PATH: "VAL/build/linux64/Release/bin"  # Path to VAL binaries directory
-VAL_EXECUTABLE: "Validate"  # VAL executable name (note: capital V)
-VAL_TIMEOUT: 300  # Seconds
-
-# Model settings
-MAX_TOKENS: 5000
-TEMPERATURE: 0.6
-TOP_K: 10
+VAL_PATH: "VAL/build/linux64/Release/bin"
+VAL_EXECUTABLE: "Validate"
+VAL_TIMEOUT: 300
 
 # Multi-GPU settings
-DEVICE_MAP: "auto"        # Options: "auto", "balanced", "sequential", or specific mapping
-MAX_GPU_MEMORY: null      # Per-GPU memory limit in GB (null for no limit)
+DEVICE_MAP: "auto"
+MAX_GPU_MEMORY: null
 
-# Execution settings
-DEFAULT_ITERATIONS: 3  # For iterative validation
+# Execution
 BATCH_SIZE: 1
 
-# Domain configuration
+# --------------------------------------------------------------------
+# Experiment axes (STEPS.md §0.2)
+# --------------------------------------------------------------------
 domains:
-  active: [blocksworld, citycar, tetris]
+  active:    [blocksworld, citycar, tetris]
   available: [blocksworld, citycar, tetris, basic_move, folding, gripper, hanoi, labyrinth, logistics, monkey, shoe-sock, travel]
+
+models:
+  active: [llama8, qwen25, llama33]
+
+conditions: [baseline, cot]
+
+generation:
+  temperature:     0.6
+  top_p:           0.95
+  top_k:           10
+  max_new_tokens:  4096
+  stop:            null
+  seed:            42
+
+iteration:
+  policy:         stop_on_success
+  max_iterations: 4
+
+# Legacy keys consumed by existing code paths — kept in sync with the
+# canonical values above so both old and new code read the same settings.
+MAX_TOKENS:          4096
+TEMPERATURE:         0.6
+TOP_K:               10
+DEFAULT_ITERATIONS:  4

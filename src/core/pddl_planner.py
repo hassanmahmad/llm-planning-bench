@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 from .file_manager import DomainBundle, FileManager
 from .model_manager import ModelManager
 from .pddl_processor import PDDLProcessor
+from models.stub import StubModelManager
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -40,9 +41,15 @@ class PDDLPlanner:
         self.file_manager = FileManager()
         self.domains_data = self._discover_domains()
         self._filter_domains_if_requested()
+        self._filter_instance_if_requested()
 
         model_path = self._resolve_model_path()
-        self.model_manager = ModelManager(model_path)
+        if getattr(self.args, "model", "auto") == "stub":
+            self.model_manager = StubModelManager(
+                stub_root=Path(self.args.problems_path),
+            )
+        else:
+            self.model_manager = ModelManager(model_path)
         self.model_manager.load()
 
         self.processor = PDDLProcessor(
@@ -109,13 +116,33 @@ class PDDLPlanner:
             raise ValueError(f"Domain '{self.args.domain}' not found")
         self.domains_data = filtered
 
+    def _filter_instance_if_requested(self) -> None:
+        instance = getattr(self.args, "instance", None)
+        if not instance:
+            return
+        filtered: List[DomainBundle] = []
+        for bundle in self.domains_data:
+            matching = [p for p in bundle.problem_paths if p.stem == instance]
+            if matching:
+                filtered.append(
+                    DomainBundle(
+                        domain_name=bundle.domain_name,
+                        domain_path=bundle.domain_path,
+                        domain_text=bundle.domain_text,
+                        problem_paths=matching,
+                    )
+                )
+        if not filtered:
+            raise ValueError(f"Instance '{instance}' not found in any active domain")
+        self.domains_data = filtered
+
     def _resolve_model_path(self) -> str:
         return str(Path(self.args.weights_path))
 
     def _build_processing_kwargs(self) -> Dict[str, Any]:
         kwargs = {
             "max_iterations": self.args.max_iterations,
-            "enable_cot": self.args.cot,
+            "condition": getattr(self.args, "condition", "baseline"),
             "add_system_prompt": self.args.add_system_prompt,
             "sampling": self.args.sampling,
             "max_tokens": self.args.max_tokens,
