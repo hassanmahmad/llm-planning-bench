@@ -1,0 +1,9 @@
+(move_square f3-0f f4-0f square0)
+(move_two f0-0f f1-0f f2-0f straight0)
+
+--- Processing Metadata ---
+Domain: tetris
+Problem: instance-01
+Iterations: 4
+Plan Valid: False
+Condition: cot

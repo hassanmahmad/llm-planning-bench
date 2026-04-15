@@ -16,4 +16,4 @@ Domain: blocksworld
 Problem: instance-01
 Iterations: 1
 Plan Valid: True
-Condition: baseline
+Condition: cot

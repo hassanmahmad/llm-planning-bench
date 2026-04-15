@@ -4,8 +4,10 @@ PROBLEMS_PATH: "src/data"
 MODEL_OUTPUT: "src/results"
 
 # Validation settings
-VAL_PATH: "VAL/build/linux64/Release/bin"
-VAL_EXECUTABLE: "Validate"
+#   Local (Windows): VAL/ contains Jan Dolejsi PDDL-extension binaries (Validate.exe).
+#   Linux / Leonardo: drop a Linux build into VAL/ (Validate, no .exe), flip VAL_EXECUTABLE.
+VAL_PATH: "VAL"
+VAL_EXECUTABLE: "Validate.exe"
 VAL_TIMEOUT: 300
 
 # Multi-GPU settings
