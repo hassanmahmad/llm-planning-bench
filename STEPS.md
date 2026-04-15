@@ -172,24 +172,24 @@ Replace Project B's monolithic `src/prompts/prompts.py` with a 3-file module:
 ### 1.4 Parametric SLURM script [P1, 4–5.5h]
 Base template: [`../dascenzogentili2425-master/scripts/gemma3_iters_4_tetris.sh`](../dascenzogentili2425-master/scripts/gemma3_iters_4_tetris.sh)
 
-- [ ] `scripts/slurm/run.sh` parameterized by `$MODEL`, `$DOMAIN`, `$CONDITION` env vars
-- [ ] Three SBATCH profiles (branch on `$MODEL`):
+- [x] `scripts/slurm/run.sh` parameterized by `$MODEL`, `$DOMAIN`, `$CONDITION` env vars
+- [x] Three SBATCH profiles (branch on `$MODEL`):
   - `small`: 1× A100-80GB, 3h walltime — for `llama8`
   - `mid`: 2× A100-80GB TP=2, 10h walltime — for `qwen25`
   - `large`: 2× A100-80GB TP=2 FP8 via vLLM, 14h walltime — for `llama33`
-- [ ] Inside the job: load generation config from `config.yml`; log it to the job stdout **at job start** for §2.4 verification
-- [ ] `scripts/slurm/submit_all.sh` iterates 3 models × 3 domains × 2 conditions and submits 18 `sbatch` jobs
-- [ ] Output paths: `src/results/{model}/{domain}/{condition}/`
+- [x] Inside the job: load generation config from `config.yml`; log it to the job stdout **at job start** for §2.4 verification
+- [x] `scripts/slurm/submit_all.sh` iterates 3 models × 3 domains × 2 conditions and submits 18 `sbatch` jobs
+- [x] Output paths: `src/results/{model}/{domain}/{condition}/`
 
 ### 1.5 Submit all 18 jobs [P1, 5.5–7h]
 - [ ] `bash scripts/slurm/submit_all.sh`
 - [ ] Record all 18 JobIDs in `scripts/slurm/SUBMITTED.md` with columns: `job_id, model, domain, condition, profile, submitted_at, status`
 
 ### 1.6 Prompt uniformity verification [P2, parallel 0–3h]
-- [ ] For each of 6 (domain, condition) combinations, dump the full prompt string for `instance-01` with each of the 3 models: `scripts/verify/dump_prompts.py --instance instance-01`
-- [ ] Diff pairwise across models → must be **byte-identical**. Save 6 reference prompts as `src/tests/fixtures/prompts/{domain}_{condition}.txt`
-- [ ] Diff `baseline` vs `cot` for same (domain, instance) → must differ **only** in the CoT scaffold block (regex assert)
-- [ ] Commit fixtures + diff script. This is the evidence for the methodology section's prompt-bias claim.
+- [x] For each of 6 (domain, condition) combinations, dump the full prompt string for `instance-01` with each of the 3 models: `scripts/verify/dump_prompts.py --instance instance-01`
+- [x] Diff pairwise across models → must be **byte-identical**. Save 6 reference prompts as `src/tests/fixtures/prompts/{domain}_{condition}.txt`
+- [x] Diff `baseline` vs `cot` for same (domain, instance) → must differ **only** in the CoT scaffold block (regex assert)
+- [x] Commit fixtures + diff script. This is the evidence for the methodology section's prompt-bias claim.
 
 ### 1.7 Methodology writeup — first draft [P2, 3–7h]
 - [ ] Report §Methodology draft: pipeline diagram, prompt harmonization design (shell + descriptions + compose), the two prompting conditions, generation-config uniformity, stop-on-success iteration policy, validator setup

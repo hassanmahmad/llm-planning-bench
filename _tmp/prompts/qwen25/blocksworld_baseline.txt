@@ -1,0 +1,91 @@
+You are an expert automated PDDL planning assistant.
+Your primary objective is to find the shortest / lowest-cost plan that achieves the goal.
+When asked to return a plan, follow these rules unless explicitly told otherwise:
+- Output only the action sequence, one action per line, using the exact PDDL action syntax: (action-name param1 param2 ...).
+- Do NOT repeat the domain or problem definition.
+- Do NOT output the initial state or goal state.
+- Do not include explanations, commentary, or extra metadata unless requested.
+- If you use <think> tags for reasoning, keep the reasoning concise and output the final plan clearly after the closing </think> tag.
+- Verify that all action preconditions are respected in the current state and that the plan achieves all goal predicates while minimising total-cost.
+
+
+BLOCKSWORLD PLANNING TASK:
+Problem description: you are an agent capable of solving the planning problems described using the PDDL syntax.
+In the following problem there is a table with some blocks and the agent can perform some actions (described later) to achieve a specific goal.
+The problem domain is defined by: types (the type of the elements), predicates (statements that can be true in the current state) and actions (what the agent can do to modify the current state).
+Types:
+1. block
+Predicates:
+1. (on ?x - block ?y - block): means the block ?x is on the block ?y
+2. (ontable ?x - block): means the block ?x is on the table
+3. (clear ?x - block): means there is nothing on the block ?x
+4. (handempty): the hand is empty
+5. (holding ?x - block): the agent is holding the block ?x
+Actions:
+1. pick-up
+   :parameters (?x - block)
+   :precondition (and (clear ?x) (ontable ?x) (handempty))
+   :effect (and (not (ontable ?x)) (not (clear ?x)) (not (handempty)) (holding ?x))
+2. put-down
+   :parameters (?x - block)
+   :precondition (holding ?x)
+   :effect (and (not (holding ?x)) (clear ?x) (handempty) (ontable ?x))
+3. stack
+   :parameters (?x - block ?y - block)
+   :precondition (and (holding ?x) (clear ?y))
+   :effect (and (not (holding ?x)) (not (clear ?y)) (clear ?x) (handempty) (on ?x ?y))
+4. unstack
+   :parameters (?x - block ?y - block)
+   :precondition (and (on ?x ?y) (clear ?x) (handempty))
+   :effect (and (holding ?x) (clear ?y) (not (clear ?x)) (not (handempty)) (not (on ?x ?y)))
+Provide only the action sequence, one action per line. Use the exact action names from the domain.
+
+
+=== DOMAIN DEFINITION ===
+;; source: https://github.com/AI-Planning/pddl-generators/blob/main/blocksworld/domain.pddl
+;;
+(define (domain blocksworld)
+
+(:requirements :strips)
+
+(:predicates (clear ?x)
+             (on-table ?x)
+             (arm-empty)
+             (holding ?x)
+             (on ?x ?y))
+
+(:action pickup
+  :parameters (?ob)
+  :precondition (and (clear ?ob) (on-table ?ob) (arm-empty))
+  :effect (and (holding ?ob) (not (clear ?ob)) (not (on-table ?ob)) 
+               (not (arm-empty))))
+
+(:action putdown
+  :parameters  (?ob)
+  :precondition (holding ?ob)
+  :effect (and (clear ?ob) (arm-empty) (on-table ?ob) 
+               (not (holding ?ob))))
+
+(:action stack
+  :parameters  (?ob ?underob)
+  :precondition (and (clear ?underob) (holding ?ob))
+  :effect (and (arm-empty) (clear ?ob) (on ?ob ?underob)
+               (not (clear ?underob)) (not (holding ?ob))))
+
+(:action unstack
+  :parameters  (?ob ?underob)
+  :precondition (and (on ?ob ?underob) (clear ?ob) (arm-empty))
+  :effect (and (holding ?ob) (clear ?underob)
+               (not (on ?ob ?underob)) (not (clear ?ob)) (not (arm-empty)))))
+
+
+=== PROBLEM DEFINITION ===
+(define (problem blocksworld_n4_r10)
+    (:domain blocksworld)
+    (:objects b1 b2 b3 b4 - object)
+    (:init (arm-empty) (on-table b1) (on b2 b3) (on b3 b4) (on b4 b1) (clear b2))
+    (:goal (and (on b1 b3) (on b2 b1) (on b3 b4) (on-table b4) (clear b2)))
+)
+
+
+Provide the plan now (one action per line).
