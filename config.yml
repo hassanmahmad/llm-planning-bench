@@ -20,3 +20,8 @@ MAX_GPU_MEMORY: null      # Per-GPU memory limit in GB (null for no limit)
 # Execution settings
 DEFAULT_ITERATIONS: 3  # For iterative validation
 BATCH_SIZE: 1
+
+# Domain configuration
+domains:
+  active: [blocksworld, citycar, tetris]
+  available: [blocksworld, citycar, tetris, basic_move, folding, gripper, hanoi, labyrinth, logistics, monkey, shoe-sock, travel]

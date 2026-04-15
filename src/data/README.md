@@ -12,11 +12,21 @@ src/data/
 │   ├── problem_02.pddl
 │   └── ...
 ├── citycar/
-│   ├── README.md            
+│   ├── README.md
 │   ├── domain.pddl
 │   ├── problem_01.pddl
 │   └── ...
-├── new_problem/
+├── basic_move/
+├── blocksworld/
+├── folding/
+├── gripper/
+├── hanoi/
+├── labyrithn/
+├── logistics/
+├── monkey/
+├── shoe-sock/
+├── travel/
+└── new_problem/
     └── ...
 ```
 
