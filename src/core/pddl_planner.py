@@ -53,7 +53,9 @@ class PDDLPlanner:
         self.model_manager.load()
 
         self.processor = PDDLProcessor(
-            model_manager=self.model_manager, output_dir=self.args.output_dir
+            model_manager=self.model_manager,
+            output_dir=self.args.output_dir,
+            model_name=self._resolve_model_name(),
         )
         logger.info("Planner setup complete")
 
@@ -138,6 +140,12 @@ class PDDLPlanner:
 
     def _resolve_model_path(self) -> str:
         return str(Path(self.args.weights_path))
+
+    def _resolve_model_name(self) -> str:
+        model = getattr(self.args, "model", None)
+        if model and model.lower() != "auto":
+            return model.lower()
+        return Path(self.args.weights_path).name.lower() or "unknown"
 
     def _build_processing_kwargs(self) -> Dict[str, Any]:
         kwargs = {

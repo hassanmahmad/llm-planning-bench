@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import tempfile
+import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -11,9 +15,40 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logg
 from prompts.shell import SYSTEM_PROMPT_PDDL
 from utils.answer_postprocessor import formatter, clean_response_text
 from utils.logging_utils import get_logger
-from utils.validator import validate_plan_from_text
+from utils.metrics_extractor import parse_val_output, run_val_verbose
+from utils.run_recorder import RunRecorder
 
 hf_logging.set_verbosity_warning()
+
+_EMPTY_METRICS: Dict[str, Any] = {
+    "plan_length": 0,
+    "solves_problem": False,
+    "valid_action_percent": 0.0,
+    "consecutive_valid_steps": 0,
+    "logical_violations": 0,
+}
+
+
+def _val_on_plan_text(
+    domain_path: str, problem_path: str, plan_text: str
+) -> Tuple[Dict[str, Any], str]:
+    """Write plan_text to a temp file, run VAL -v once, return (metrics, raw_output)."""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".plan", delete=False, encoding="utf-8"
+    ) as tmp:
+        tmp.write(plan_text)
+        tmp_path = tmp.name
+    try:
+        raw = run_val_verbose(domain_path, problem_path, tmp_path)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        get_logger(__name__).warning("VAL unavailable or timed out: %s", exc)
+        raw = ""
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+    return parse_val_output(raw), raw
 
 logger = get_logger(__name__)
 
@@ -195,6 +230,7 @@ class ModelManager:
         max_iterations: int = 3,
         add_system_prompt: bool = True,
         validation_feedback_fn: Optional[Callable[[str, str, str], str]] = None,
+        recorder: Optional[RunRecorder] = None,
         **generation_kwargs,
     ) -> Tuple[str, int, bool]:
         messages = self._build_initial_messages(initial_prompt, add_system_prompt)
@@ -212,8 +248,11 @@ class ModelManager:
         config["include_prompt"] = False
 
         last_response = ""
+        last_plan_text = ""
+        final_iteration = 0
 
         for iteration in range(1, max_iterations + 1):
+            final_iteration = iteration
             logger.info(
                 "Planning iteration %d/%d (%s / %s)",
                 iteration,
@@ -222,8 +261,13 @@ class ModelManager:
                 Path(problem_path).name,
             )
 
+            prompt_tokens = self._safe_token_count(self._format_messages(messages))
+            iter_start = time.perf_counter()
             response = self.generate_response(messages, **config)
+            wallclock_s = time.perf_counter() - iter_start
+            completion_tokens = self._safe_token_count(response)
             last_response = response
+
             logger.debug(f"Iteration {iteration}: generated response length: {len(response)}")
             formatted = formatter(response, include_reasoning=True)
             plan_actions = formatted.get("plan", [])
@@ -231,6 +275,15 @@ class ModelManager:
 
             if not plan_actions:
                 logger.warning("Iteration %d: no plan extracted", iteration)
+                if recorder is not None:
+                    recorder.record_iter(
+                        iteration=iteration,
+                        plan_text="",
+                        metrics=_EMPTY_METRICS,
+                        wallclock_s=wallclock_s,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                    )
                 self._append_feedback(
                     messages,
                     assistant=response,
@@ -242,25 +295,57 @@ class ModelManager:
                 continue
 
             plan_text = "\n".join(plan_actions)
-            validation = validate_plan_from_text(domain_path, problem_path, plan_text)
+            last_plan_text = plan_text
+            metrics, raw_val_output = _val_on_plan_text(
+                domain_path, problem_path, plan_text
+            )
 
-            if validation.get("valid"):
+            if recorder is not None:
+                recorder.record_iter(
+                    iteration=iteration,
+                    plan_text=plan_text,
+                    metrics=metrics,
+                    wallclock_s=wallclock_s,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                )
+
+            if metrics["solves_problem"]:
                 logger.info("Valid plan produced in %d iteration(s)", iteration)
+                if recorder is not None:
+                    recorder.finalize(
+                        plan_text=plan_text,
+                        first_valid_iter=iteration,
+                        total_iterations=iteration,
+                    )
                 return plan_text, iteration, True
 
-            error_msg = validation.get("error") or "Plan validation failed"
+            error_msg = raw_val_output.strip() or "Plan validation failed"
             feedback = self._build_validation_feedback(
                 validation_feedback_fn, initial_prompt, plan_text, error_msg
             )
-            logger.warning(
-                "Invalid plan (iteration %d): %s", iteration, error_msg
-            )
+            logger.warning("Invalid plan (iteration %d)", iteration)
             self._append_feedback(messages, assistant=response, user=feedback)
 
         logger.error("No valid plan found after %d iterations", max_iterations)
-        formatted = formatter(last_response, include_reasoning=True)
-        plan_text = "\n".join(formatted.get("plan", []))
-        return plan_text, max_iterations, False
+        if not last_plan_text:
+            formatted = formatter(last_response, include_reasoning=True)
+            last_plan_text = "\n".join(formatted.get("plan", []))
+        if recorder is not None:
+            recorder.finalize(
+                plan_text=last_plan_text,
+                first_valid_iter=None,
+                total_iterations=final_iteration,
+            )
+        return last_plan_text, max_iterations, False
+
+    def _safe_token_count(self, text: str) -> Optional[int]:
+        if not self.tokenizer or not text:
+            return 0 if self.tokenizer else None
+        try:
+            return len(self.tokenizer(text, add_special_tokens=False).input_ids)
+        except Exception:  # pragma: no cover - tokenizer quirks
+            return None
 
     def _build_initial_messages(
         self, prompt: str, add_system_prompt: bool

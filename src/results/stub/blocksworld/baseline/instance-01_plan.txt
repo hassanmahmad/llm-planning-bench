@@ -17,3 +17,5 @@ Problem: instance-01
 Iterations: 1
 Plan Valid: True
 Condition: baseline
+Model: stub
+First Valid Iteration: 1

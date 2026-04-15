@@ -9,6 +9,7 @@ from .file_manager import DomainBundle, FileManager
 from .model_manager import ModelManager
 from prompts import compose
 from utils.logging_utils import get_logger
+from utils.run_recorder import RunRecorder
 
 logger = get_logger(__name__)
 
@@ -21,12 +22,22 @@ def _feedback_adapter(initial_prompt: str, plan_text: str, error_msg: str) -> st
 class PDDLProcessor:
     """Coordinates domain processing, prompt creation, and plan validation."""
 
-    def __init__(self, model_manager: ModelManager, output_dir: str):
+    def __init__(
+        self,
+        model_manager: ModelManager,
+        output_dir: str,
+        model_name: str = "unknown",
+    ):
         self.model_manager = model_manager
         self.output_dir = Path(output_dir)
+        self.model_name = model_name
         self.file_manager = FileManager()
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        logger.info("PDDLProcessor initialized (output=%s)", self.output_dir)
+        logger.info(
+            "PDDLProcessor initialized (output=%s, model=%s)",
+            self.output_dir,
+            self.model_name,
+        )
 
     # ------------------------------------------------------------------
     # Domain-level processing
@@ -181,6 +192,14 @@ class PDDLProcessor:
             domain.domain_name, condition, domain.domain_text, problem_text
         )
 
+        recorder = RunRecorder(
+            output_dir=output_dir,
+            model=self.model_name,
+            domain=domain.domain_name,
+            condition=condition,
+            instance=problem_path.stem,
+        )
+
         response_text, iterations, is_valid = self.model_manager.iterative_planning_with_validation(
             domain_path=str(domain.domain_path),
             problem_path=str(problem_path),
@@ -189,24 +208,16 @@ class PDDLProcessor:
             add_system_prompt=add_system_prompt,
             validation_feedback_fn=_feedback_adapter,
             sampling=sampling,
+            recorder=recorder,
             **generation_kwargs,
         )
 
-        plan_path = output_dir / f"{problem_path.stem}_plan.txt"
-        metadata = (
-            "\n\n--- Processing Metadata ---\n"
-            f"Domain: {domain.domain_name}\n"
-            f"Problem: {problem_path.stem}\n"
-            f"Iterations: {iterations}\n"
-            f"Plan Valid: {is_valid}\n"
-            f"Condition: {condition}\n"
-        )
-        self.file_manager.save_file(plan_path, response_text + metadata)
-
+        # recorder.finalize() has already written the plan file on both the
+        # stop-on-success and exhaustion paths. Nothing else to do here.
         return {
             "problem_path": str(problem_path),
             "problem_name": problem_path.stem,
-            "plan_path": str(plan_path),
+            "plan_path": str(recorder.final_plan_path),
             "plan_valid": is_valid,
             "iterations": iterations,
             "response_length": len(response_text),

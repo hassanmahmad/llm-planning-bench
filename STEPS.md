@@ -139,26 +139,26 @@ Replace Project B's monolithic `src/prompts/prompts.py` with a 3-file module:
 ## Day 1 — Port, patch, submit all 18
 
 ### 1.1 Port VAL-verbose metrics extractor [P1, 0–1.5h]
-- [ ] Create `src/utils/metrics_extractor.py`
-- [ ] Lift `run_val_verbose` + `parse_val_output` from [../merolasinghdardouri2425-master/utils/dataset_generator.py L23–63](../merolasinghdardouri2425-master/utils/dataset_generator.py#L23-L63)
-- [ ] Strip every meta-network line. Pure function returning:
+- [x] Create `src/utils/metrics_extractor.py`
+- [x] Lift `run_val_verbose` + `parse_val_output` from [../merolasinghdardouri2425-master/utils/dataset_generator.py L23–63](../merolasinghdardouri2425-master/utils/dataset_generator.py#L23-L63)
+- [x] Strip every meta-network line. Pure function returning:
   ```python
   {"valid_action_percent": float, "consecutive_valid_steps": int,
    "logical_violations": int, "plan_length": int, "solves_problem": bool}
   ```
-- [ ] Unit test: one known-valid + one known-invalid plan from Project A's `generated_plans/` — outputs must match Project A's CSV entries
+- [x] Unit test: one known-valid + one known-invalid plan from Project A's `generated_plans/` — outputs must match Project A's CSV entries
 
 ### 1.2 Patch the iteration loop for stop-on-success + per-iter logging [P1, 1.5–3h]
-- [ ] Open [`../dascenzogentili2425-master/src/core/model_manager.py`](../dascenzogentili2425-master/src/core/model_manager.py) → find `iterative_planning_with_validation` (~L189–263)
-- [ ] **Keep** the early-return at L247–249 — stop-on-success is the desired behavior
-- [ ] **Inside** the loop, **before** the validity check, add:
+- [x] Open [`../dascenzogentili2425-master/src/core/model_manager.py`](../dascenzogentili2425-master/src/core/model_manager.py) → find `iterative_planning_with_validation` (~L189–263)
+- [x] **Keep** the early-return at L247–249 — stop-on-success is the desired behavior
+- [x] **Inside** the loop, **before** the validity check, add:
   - Write `instance-XX_iter_{k}.txt` to disk
   - Call `metrics_extractor.extract(...)` and append a row to `run_metrics.csv` with columns:
     `model, domain, prompting_condition, instance, iteration, plan_text, plan_len, solves_problem, valid_action_percent, consecutive_valid_steps, logical_violations, wallclock_s, prompt_tokens, completion_tokens`
-- [ ] Track `first_valid_iter` — set to current iter when validation passes, remain `null` if loop exhausts
-- [ ] On successful iteration: write final `instance-XX_plan.txt` with Project B's `--- Processing Metadata ---` block (include `first_valid_iter` in metadata), then break
-- [ ] On loop exhaustion (all 4 failed): write `instance-XX_plan.txt` using iter-4's plan text with `first_valid_iter = null` in metadata
-- [ ] Re-run `scripts/local/smoke_test.sh` — confirm stop-on-success path and 4-iter-fail path both write expected files
+- [x] Track `first_valid_iter` — set to current iter when validation passes, remain `null` if loop exhausts
+- [x] On successful iteration: write final `instance-XX_plan.txt` with Project B's `--- Processing Metadata ---` block (include `first_valid_iter` in metadata), then break
+- [x] On loop exhaustion (all 4 failed): write `instance-XX_plan.txt` using iter-4's plan text with `first_valid_iter = null` in metadata
+- [x] Re-run `scripts/local/smoke_test.sh` — confirm stop-on-success path and 4-iter-fail path both write expected files
 
 ### 1.3 Unify the validator [P1, 3–4h]
 - [ ] In [`../dascenzogentili2425-master/src/utils/validator.py`](../dascenzogentili2425-master/src/utils/validator.py), add:

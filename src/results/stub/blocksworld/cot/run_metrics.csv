@@ -1,0 +1,13 @@
+model,domain,prompting_condition,instance,iteration,plan_text,plan_len,solves_problem,valid_action_percent,consecutive_valid_steps,logical_violations,wallclock_s,prompt_tokens,completion_tokens
+stub,blocksworld,cot,instance-01,1,"(unstack b2 b3)
+(putdown b2)
+(unstack b3 b4)
+(putdown b3)
+(unstack b4 b1)
+(putdown b4)
+(pickup b3)
+(stack b3 b4)
+(pickup b1)
+(stack b1 b3)
+(pickup b2)
+(stack b2 b1)",12,True,100.0,12,0,0.019,,

@@ -7,3 +7,5 @@ Problem: instance-01
 Iterations: 4
 Plan Valid: False
 Condition: cot
+Model: stub
+First Valid Iteration: null
