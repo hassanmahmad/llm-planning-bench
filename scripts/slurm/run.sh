@@ -32,6 +32,9 @@ set -euo pipefail
 : "${MODEL:?MODEL env var is required (llama8|qwen25|llama33)}"
 : "${DOMAIN:?DOMAIN env var is required (blocksworld|citycar|tetris)}"
 : "${CONDITION:?CONDITION env var is required (baseline|cot)}"
+# INSTANCE is OPTIONAL — set it to e.g. instance-01 to restrict the cell
+# to a single problem (shakedown runs). Leave unset for the full 20-instance cell.
+: "${INSTANCE:=}"
 
 mkdir -p scripts/slurm/logs
 
@@ -48,6 +51,7 @@ echo "Start Time:    $(date -u +%FT%TZ)"
 echo "MODEL:         ${MODEL}"
 echo "DOMAIN:        ${DOMAIN}"
 echo "CONDITION:     ${CONDITION}"
+echo "INSTANCE:      ${INSTANCE:-<all 20>}"
 echo "=========================================="
 
 # -------------------------------------------------
@@ -164,6 +168,9 @@ MAIN_ARGS=(
   --log-level     INFO
   --verbose
 )
+if [ -n "${INSTANCE}" ]; then
+  MAIN_ARGS+=(--instance "${INSTANCE}")
+fi
 
 echo "Command: python src/main.py ${MAIN_ARGS[*]}"
 echo "=========================================="

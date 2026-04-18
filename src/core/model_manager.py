@@ -6,6 +6,8 @@ import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import os
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logging
 
@@ -58,7 +60,7 @@ class ModelManager:
 
     def _load_model(self):
         kwargs = {
-            "torch_dtype": torch.bfloat16,
+            "torch_dtype": self._pick_dtype(),
             "trust_remote_code": True,
         }
         if torch.cuda.is_available():
@@ -66,8 +68,31 @@ class ModelManager:
         else:
             kwargs["device_map"] = {"": self.device}
 
+        # Optional 4-bit loading for small-VRAM laptops (RTX 2060 etc.).
+        # Activated by env var so no CLI/backend changes are needed on Leonardo.
+        if os.environ.get("LLM_LOAD_IN_4BIT", "").lower() in {"1", "true", "yes"}:
+            from transformers import BitsAndBytesConfig  # local import — optional dep
+            logger.info("LLM_LOAD_IN_4BIT set — loading with 4-bit NF4 quantization")
+            kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=self._pick_dtype(),
+                bnb_4bit_use_double_quant=True,
+            )
+            # device_map is required by bnb; torch_dtype is set via compute_dtype.
+            kwargs.pop("torch_dtype", None)
+
         logger.debug("Loading model from %s", self.weights_path)
         return AutoModelForCausalLM.from_pretrained(self.weights_path, **kwargs)
+
+    @staticmethod
+    def _pick_dtype():
+        """bf16 on Ampere+, fp16 on older GPUs (Turing like RTX 2060), fp32 on CPU."""
+        if not torch.cuda.is_available():
+            return torch.float32
+        if torch.cuda.is_bf16_supported():
+            return torch.bfloat16
+        return torch.float16
 
     def _load_tokenizer(self):
         logger.debug("Loading tokenizer from %s", self.weights_path)

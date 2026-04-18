@@ -1,0 +1,56 @@
+% ---------------------------------------------------------------------
+% Report skeleton — Day 1 stub. Only §Methodology and Appendix A are
+% drafted here (STEPS.md §1.7); other sections are placeholders filled
+% on Days 2–4 (STEPS.md §2.2, §3.4, §4.2).
+%
+% Build:   latexmk -pdf main.tex      (from report/)
+% ---------------------------------------------------------------------
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+\usepackage{hyperref}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  framerule=0pt,
+  backgroundcolor=\color{black!3},
+  showstringspaces=false,
+  keepspaces=true,
+  columns=flexible,
+}
+
+\title{Controlled Comparative Study of LLM Planning\\
+       \large Unifying Merola~et~al.\ (Project~A) and
+       D'Ascenzo~\&~Gentili (Project~B)}
+\author{Usama Shabbir Satti \and Muhammad Fahim Asim \and Hassan Ahmed Mujtaba}
+\date{April 2026 --- Day~1 draft}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% Fill on Day 3 once Results are in.
+\noindent\textit{Abstract --- to be written on Day~3 once the 18-cell
+results matrix is populated.}
+\end{abstract}
+
+% \input{context}           % Day 4
+% \input{experimental_design}   % Day 4
+\input{methodology}
+% \input{results}           % Day 3
+% \input{discussion}        % Day 3
+% \input{limitations}       % Day 3
+% \input{conclusions}       % Day 4
+
+\input{appendix_prompts}
+
+\end{document}

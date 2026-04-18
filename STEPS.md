@@ -192,8 +192,8 @@ Base template: [`../dascenzogentili2425-master/scripts/gemma3_iters_4_tetris.sh`
 - [x] Commit fixtures + diff script. This is the evidence for the methodology section's prompt-bias claim.
 
 ### 1.7 Methodology writeup — first draft [P2, 3–7h]
-- [ ] Report §Methodology draft: pipeline diagram, prompt harmonization design (shell + descriptions + compose), the two prompting conditions, generation-config uniformity, stop-on-success iteration policy, validator setup
-- [ ] Include the 6 reference prompts as appendix material
+- [x] Report §Methodology draft: pipeline diagram, prompt harmonization design (shell + descriptions + compose), the two prompting conditions, generation-config uniformity, stop-on-success iteration policy, validator setup
+- [x] Include the 6 reference prompts as appendix material
 
 ### 1.8 Notebook plot cells 1–4 [P3, 0–7h]
 - [ ] Cell 1: Success-rate matrix (model × domain × condition)
