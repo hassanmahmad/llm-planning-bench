@@ -165,6 +165,7 @@ MAIN_ARGS=(
   --domain        "${DOMAIN}"
   --condition     "${CONDITION}"
   --cluster       leonardo
+  --sampling
   --log-level     INFO
   --verbose
 )
