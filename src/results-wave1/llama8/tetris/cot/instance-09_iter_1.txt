@@ -1,0 +1,3 @@
+(at_two straight0 f1-0f f1-1f)
+(at_two straight1 f2-0f f2-1f)
+(move_square f0-0f f4-0f square0)

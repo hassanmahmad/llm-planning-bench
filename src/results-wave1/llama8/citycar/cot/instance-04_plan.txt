@@ -1,0 +1,11 @@
+(car_arrived junction2-2 car3)
+(car_arrived junction2-1 car4)
+
+--- Processing Metadata ---
+Domain: citycar
+Problem: instance-04
+Iterations: 4
+Plan Valid: False
+Condition: cot
+Model: llama8
+First Valid Iteration: null

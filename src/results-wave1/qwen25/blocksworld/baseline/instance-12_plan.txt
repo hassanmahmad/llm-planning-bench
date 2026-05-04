@@ -1,0 +1,17 @@
+(putdown b8)
+(putdown b3)
+(pickup b4)
+(pickup b6)
+(pickup b7)
+(pickup b1)
+(pickup b2)
+(pickup b5)
+
+--- Processing Metadata ---
+Domain: blocksworld
+Problem: instance-12
+Iterations: 4
+Plan Valid: False
+Condition: baseline
+Model: qwen25
+First Valid Iteration: null

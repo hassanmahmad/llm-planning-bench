@@ -12,7 +12,11 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, logging as hf_logging
 
 from prompts.shell import SYSTEM_PROMPT_PDDL
-from utils.answer_postprocessor import formatter, clean_response_text
+from utils.answer_postprocessor import (
+    clean_response_text,
+    extract_domain_actions,
+    formatter,
+)
 from utils.logging_utils import get_logger
 from utils.metrics_extractor import ZERO_METRICS, parse_val_output
 from utils.run_recorder import RunRecorder
@@ -240,6 +244,18 @@ class ModelManager:
         # and ensure clean response extraction
         config["include_prompt"] = False
 
+        # Parse the domain's action vocabulary once so the post-processor can
+        # filter out state predicates and goal expressions the model echoes
+        # back. Without this, items like (on b1 b2) and (and (on ...)) get
+        # extracted as "actions" and VAL rejects the entire plan.
+        try:
+            with open(domain_path, "r", encoding="utf-8") as fh:
+                domain_actions = extract_domain_actions(fh.read())
+            logger.debug("Domain actions for %s: %s", Path(domain_path).name, sorted(domain_actions))
+        except OSError as exc:
+            logger.warning("Could not read domain file %s for action extraction: %s", domain_path, exc)
+            domain_actions = set()
+
         last_response = ""
         last_plan_text = ""
         final_iteration = 0
@@ -262,7 +278,7 @@ class ModelManager:
             last_response = response
 
             logger.debug(f"Iteration {iteration}: generated response length: {len(response)}")
-            formatted = formatter(response, include_reasoning=True)
+            formatted = formatter(response, include_reasoning=True, allowed_actions=domain_actions)
             plan_actions = formatted.get("plan", [])
             logger.debug("Iteration %d: extracted %d plan actions", iteration, len(plan_actions))
 

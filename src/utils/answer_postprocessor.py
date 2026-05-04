@@ -1,16 +1,35 @@
 """
 Answer Post-processor for PDDL Plans
 
-This module provides functionality to clean, format, and extract structured information 
+This module provides functionality to clean, format, and extract structured information
 from LLM-generated PDDL plans and responses.
 """
 
 import re
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Set, Iterable
 import json
 
 
-def formatter(raw_response: str, include_reasoning: bool = False) -> Dict:
+# Module-level state set by extract_domain_actions / passed via formatter.
+# Used to gate _looks_like_action so we don't accept state predicates as actions.
+_ALLOWED_ACTIONS: Optional[Set[str]] = None
+
+
+def extract_domain_actions(domain_text: str) -> Set[str]:
+    """Pull the lowercase action names from a PDDL domain definition.
+
+    Returns the set of names declared via `(:action <name> ...)`.
+    """
+    if not domain_text:
+        return set()
+    return {m.group(1).lower() for m in re.finditer(r"\(:action\s+([A-Za-z][A-Za-z0-9_\-]*)", domain_text)}
+
+
+def formatter(
+    raw_response: str,
+    include_reasoning: bool = False,
+    allowed_actions: Optional[Iterable[str]] = None,
+) -> Dict:
     """
     Format and clean raw LLM response to extract PDDL plan.
     
@@ -30,9 +49,18 @@ def formatter(raw_response: str, include_reasoning: bool = False) -> Dict:
             "confidence": "unknown",
             "format_issues": ["Empty or invalid response"]
         }
-    
-    # Extract different components
-    plan_actions = extract_plan_actions(raw_response)
+
+    # Set module-level allowlist for the duration of this call so the
+    # internal _looks_like_action helper can consult it without changing
+    # every nested signature.
+    global _ALLOWED_ACTIONS
+    prev_allowed = _ALLOWED_ACTIONS
+    _ALLOWED_ACTIONS = {a.lower() for a in allowed_actions} if allowed_actions else None
+    try:
+        # Extract different components
+        plan_actions = extract_plan_actions(raw_response)
+    finally:
+        _ALLOWED_ACTIONS = prev_allowed
     reasoning = extract_reasoning(raw_response) if include_reasoning else ""
     confidence = extract_confidence_indicators(raw_response)
     format_issues = detect_format_issues(raw_response)
@@ -204,39 +232,51 @@ def parse_action_lines(text: str) -> List[str]:
 
 
 def _looks_like_action(text: str) -> bool:
+    """Decide whether text looks like a real PDDL action.
+
+    When a domain action allowlist is set (via ``formatter(..., allowed_actions=...)``),
+    only actions whose head matches one of those names are accepted. This filters
+    out state predicates and goal expressions like ``(on-table b1)`` or
+    ``(and (on b1 b3))`` that the model echoes back from the problem.
+
+    With no allowlist, fall back to a permissive shape check (any
+    identifier-led parenthesized expression).
     """
-    Heuristic to determine if text looks like a PDDL action.
-    
-    Args:
-        text (str): Text to evaluate
-        
-    Returns:
-        bool: True if text looks like an action
-    """
-    
-    text = text.lower().strip()
-    
-    # Should contain action-like words
-    action_indicators = [
-        'move', 'place', 'pick', 'put', 'go', 'drive', 'load', 'unload',
-        'drop', 'lift', 'push', 'pull', 'rotate', 'turn', 'shift',
-        'car', 'arrived', 'start', 'build', 'destroy', 'straight', 'diagonal'
-    ]
-    
-    # Should not contain explanation words
-    explanation_words = [
-        'because', 'since', 'therefore', 'this will', 'we need', 'explanation',
-        'note that', 'remember', 'important', 'first we', 'then we'
-    ]
-    
-    has_action_word = any(word in text for word in action_indicators)
-    has_explanation = any(word in text for word in explanation_words)
-    
-    # Basic format check - should have multiple words
-    words = text.split()
-    has_good_length = 2 <= len(words) <= 10
-    
-    return has_action_word and not has_explanation and has_good_length
+
+    text = text.strip()
+    if not text:
+        return False
+
+    # Strip outer parens if they slipped through.
+    if text.startswith("(") and text.endswith(")"):
+        text = text[1:-1].strip()
+
+    # Reject obvious prose markers.
+    explanation_starts = (
+        "because", "since", "therefore", "explanation", "note that",
+        "first we", "then we", "this will", "we need to",
+    )
+    if any(text.lower().startswith(p) for p in explanation_starts):
+        return False
+
+    parts = text.split()
+    if not parts:
+        return False
+
+    head = parts[0]
+
+    # If the caller gave us the domain's action vocabulary, use it as the
+    # authoritative filter — this is what cuts state predicates / goals.
+    if _ALLOWED_ACTIONS is not None:
+        return head.lower() in _ALLOWED_ACTIONS
+
+    # Fallback (no domain context): identifier shape + reasonable arity.
+    if not re.match(r"^[A-Za-z][A-Za-z0-9_\-]*$", head):
+        return False
+    if not (1 <= len(parts) <= 11):
+        return False
+
+    return True
 
 
 def extract_parenthesized_actions(text: str) -> List[str]:

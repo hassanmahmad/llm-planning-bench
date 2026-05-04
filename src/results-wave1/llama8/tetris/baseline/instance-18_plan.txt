@@ -1,0 +1,20 @@
+(at_two straight0 f1-0f f1-1f)
+(at_two straight1 f1-2f f1-3f)
+(move_square f0-0f f-1-0f square0)
+(move_square f0-1f f-1-1f square1)
+(move_square f0-2f f-1-2f square2)
+(move_square f0-3f f-1-3f square3)
+(move_two f1-0f f1-1f f4-0f straight0)
+(move_l_right f2-0f f2-1f f2-2f f4-0f f4-1f f4-2f rightl0)
+(move_l_right f3-0f f3-1f f3-2f f4-0f f4-1f f4-2f rightl1)
+(move_l_right f4-0f f4-1f f4-2f f4-0f f4-1f f4-2f rightl2)
+(move_l_right f5-0f f5-1f f5-2f f4-0f f4-1f f4-2f rightl3)
+
+--- Processing Metadata ---
+Domain: tetris
+Problem: instance-18
+Iterations: 1
+Plan Valid: True
+Condition: baseline
+Model: llama8
+First Valid Iteration: 1

@@ -24,28 +24,48 @@ except ImportError:
 def get_val_executable() -> str:
     """
     Get the VAL executable path from configuration.
-    
+
+    Platform-aware: if the configured VAL_EXECUTABLE has a .exe suffix
+    (Windows convention) but we're on a non-Windows host, the .exe is
+    stripped automatically — and vice versa. This prevents a single
+    config.yml synced between a Windows dev machine and a Linux cluster
+    from breaking either side.
+
     Returns:
         str: Full path to the VAL executable
     """
+    import platform
+
+    is_windows = platform.system() == "Windows"
+
     try:
         config = load_config()
         val_path = config.get("VAL_PATH", "VAL/build/linux64/Release/bin")
         val_executable = config.get("VAL_EXECUTABLE", "Validate")
-        
+
+        # Normalize the executable name to the host's convention. Caller's
+        # config.yml may carry either spelling — match what's actually on disk.
+        if is_windows and not val_executable.lower().endswith(".exe"):
+            candidates = [val_executable + ".exe", val_executable]
+        elif not is_windows and val_executable.lower().endswith(".exe"):
+            candidates = [val_executable[:-4], val_executable]
+        else:
+            candidates = [val_executable]
+
         # Create absolute path from project root
         project_root = Path(__file__).parent.parent.parent
-        full_val_path = project_root / val_path / val_executable
-        
-        if full_val_path.exists():
-            return str(full_val_path)
-        else:
-            # Fallback to system PATH
-            return val_executable
-            
+
+        for cand in candidates:
+            full_val_path = project_root / val_path / cand
+            if full_val_path.exists():
+                return str(full_val_path)
+
+        # Fallback to system PATH (last resort)
+        return candidates[0]
+
     except Exception:
-        # Fallback to default
-        return "Validate"
+        # Fallback to platform-appropriate default
+        return "Validate.exe" if is_windows else "Validate"
 
 
 def validate_plan(domain_path: str, problem_path: str, plan_path: str, val_executable: Optional[str] = None) -> Dict:

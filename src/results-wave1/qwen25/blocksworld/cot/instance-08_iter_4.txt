@@ -1,0 +1,3 @@
+(pickup b1)
+(put-down b3)
+(pickup b3)

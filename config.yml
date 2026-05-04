@@ -33,7 +33,7 @@ generation:
   temperature:     0.1
   top_p:           0.95
   top_k:           10
-  max_new_tokens:  4096
+  max_new_tokens:  8192
   stop:            null
   seed:            42
 
@@ -43,7 +43,7 @@ iteration:
 
 # Legacy keys consumed by existing code paths — kept in sync with the
 # canonical values above so both old and new code read the same settings.
-MAX_TOKENS:          4096
+MAX_TOKENS:          8192
 TEMPERATURE:         0.1
 TOP_K:               10
 DEFAULT_ITERATIONS:  4

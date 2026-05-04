@@ -1,0 +1,2 @@
+(Parse the initial state and goal from the problem.)
+(List the actions relevant to reaching each goal predicate.)

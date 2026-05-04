@@ -1,0 +1,4 @@
+(at_two straight0 f0-1f f0-2f)
+(at_two straight1 f0-2f f0-3f)
+(at_two straight0 f0-1f f0-2f)
+(at_two straight1 f0-2f f0-3f)

@@ -17,7 +17,15 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-MODELS=(llama8 qwen25 llama33)
+# Override model list for staged submission, e.g. for two-wave rollouts:
+#   MODELS_OVERRIDE="llama8 qwen25" bash scripts/slurm/submit_all.sh   # wave 1
+#   MODELS_OVERRIDE="llama33"       bash scripts/slurm/submit_all.sh   # wave 2
+if [ -n "${MODELS_OVERRIDE:-}" ]; then
+  # shellcheck disable=SC2206
+  MODELS=( ${MODELS_OVERRIDE} )
+else
+  MODELS=(llama8 qwen25 llama33)
+fi
 DOMAINS=(blocksworld citycar tetris)
 CONDITIONS=(baseline cot)
 
@@ -81,13 +89,21 @@ for MODEL in "${MODELS[@]}"; do
       JOB_NAME="${MODEL}_${DOMAIN}_${CONDITION}"
       TS="$(date -u +%FT%TZ)"
 
+      # 70B in bf16 needs ~140 GB; 2× A100-64GB only gives 128 GB.
+      # Force 4-bit (NF4) loading via the env hook in model_manager.py
+      # — fits 70B in ~35 GB on a single GPU, plenty of room for 2× A100.
+      EXPORT_VARS="ALL,MODEL=${MODEL},DOMAIN=${DOMAIN},CONDITION=${CONDITION}"
+      if [ "${MODEL}" = "llama33" ]; then
+        EXPORT_VARS="${EXPORT_VARS},LLM_LOAD_IN_4BIT=1"
+      fi
+
       # shellcheck disable=SC2086
       CMD=(sbatch
           --job-name="${JOB_NAME}"
           --output="${LOG_DIR}/${JOB_NAME}_%j.out"
           --error="${LOG_DIR}/${JOB_NAME}_%j.err"
           ${FLAGS}
-          --export="ALL,MODEL=${MODEL},DOMAIN=${DOMAIN},CONDITION=${CONDITION}"
+          --export="${EXPORT_VARS}"
           "${RUN_SCRIPT}")
 
       if [ "${DRY_RUN}" = "1" ]; then
@@ -119,10 +135,11 @@ echo ""
 echo "=========================================="
 echo " submit_all summary"
 echo "=========================================="
+EXPECTED=$(( ${#MODELS[@]} * ${#DOMAINS[@]} * ${#CONDITIONS[@]} ))
 if [ "${DRY_RUN}" = "1" ]; then
-  echo "  DRY_RUN (no sbatch calls made)"
+  echo "  DRY_RUN (no sbatch calls made, would submit ${EXPECTED})"
 else
-  echo "  submitted: ${submitted} / 18"
+  echo "  submitted: ${submitted} / ${EXPECTED}"
   echo "  failed:    ${failed}"
   echo "  tracker:   ${TRACKER}"
 fi

@@ -1,0 +1,11 @@
+(putdown b5)
+(pickup b6)
+
+--- Processing Metadata ---
+Domain: blocksworld
+Problem: instance-06
+Iterations: 4
+Plan Valid: False
+Condition: cot
+Model: qwen25
+First Valid Iteration: null

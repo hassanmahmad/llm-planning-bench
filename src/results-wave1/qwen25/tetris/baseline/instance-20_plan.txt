@@ -1,0 +1,15 @@
+(at_two straight0 f1-2f f1-3f)
+(at_two straight1 f2-0f f2-1f)
+(at_two straight2 f2-2f f2-3f)
+(at_two straight0 f2-2f f2-3f)
+(at_two straight1 f3-0f f3-1f)
+(at_two straight2 f3-2f f3-3f)
+
+--- Processing Metadata ---
+Domain: tetris
+Problem: instance-20
+Iterations: 1
+Plan Valid: True
+Condition: baseline
+Model: qwen25
+First Valid Iteration: 1

@@ -44,13 +44,23 @@ def COT_SCAFFOLD(description: str, problem: str) -> str:
 def VALIDATION_FEEDBACK_TEMPLATE(val_output: str, previous_plan: str) -> str:
     """Single feedback template shared across all domains."""
     return (
-        "Your previous plan failed validation.\n\n"
-        "YOUR PLAN:\n"
+        "Your previous plan FAILED validation. Analyze the validator output below "
+        "carefully and produce a corrected plan from scratch.\n\n"
+        "===== YOUR PREVIOUS PLAN =====\n"
         f"{previous_plan}\n\n"
-        "VALIDATOR OUTPUT:\n"
+        "===== VALIDATOR (VAL) OUTPUT =====\n"
         f"{val_output}\n\n"
-        "Produce a corrected plan. Output ONLY the corrected action sequence, "
-        "one action per line."
+        "===== INSTRUCTIONS =====\n"
+        "1. Identify the FIRST action that failed and the specific precondition "
+        "or invariant that was violated. The validator usually names it directly "
+        "(e.g. 'unsatisfied precondition', 'has no effect', or 'invalid action').\n"
+        "2. Trace the state forward from the initial state and re-check every "
+        "action's preconditions before that point — an earlier action may have "
+        "left the world in a state you didn't expect.\n"
+        "3. Output a CORRECTED plan from the very first action, not a partial fix.\n"
+        "4. Output ONLY the action sequence, one action per line, in the exact "
+        "PDDL syntax (action-name arg1 arg2 ...). No prose, no numbering, no "
+        "code fences, no commentary."
     )
 
 

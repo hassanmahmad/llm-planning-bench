@@ -1,0 +1,6 @@
+(car_start junction2-2 car2 garage1)
+(car_start junction2-2 car3 garage1)
+(car_arrived junction2-2 car0)
+(car_arrived junction2-2 car1)
+(car_arrived junction2-2 car2)
+(car_arrived junction2-2 car3)

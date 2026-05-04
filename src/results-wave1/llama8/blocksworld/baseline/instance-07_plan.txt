@@ -1,0 +1,23 @@
+(pick-up b4)
+(put-down b4)
+(pick-up b3)
+(put-down b3)
+(put-down b3)
+(put-down b4)
+(put-down b5)
+(pick-up b4)
+(put-down b4)
+(pick-up b3)
+(put-down b3)
+(put-down b3)
+(put-down b4)
+(put-down b5)
+
+--- Processing Metadata ---
+Domain: blocksworld
+Problem: instance-07
+Iterations: 4
+Plan Valid: False
+Condition: baseline
+Model: llama8
+First Valid Iteration: null

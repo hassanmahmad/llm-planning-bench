@@ -1,0 +1,5 @@
+(build_straight_oneway junction2-2 junction3-2 road4)
+(car_arrived junction3-0 car0)
+(car_arrived junction3-1 car3)
+(car_arrived junction3-2 car1 car4)
+(car_arrived junction3-2 car2)

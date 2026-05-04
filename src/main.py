@@ -103,6 +103,12 @@ def _build_parser(config: Dict) -> argparse.ArgumentParser:
         default=generation.get("max_new_tokens", config.get("MAX_TOKENS", 4096)),
         help="Maximum tokens to generate per response",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=generation.get("seed", config.get("SEED", 42)),
+        help="Random seed for torch/numpy/python — applied globally before generation",
+    )
 
     boolean_action = argparse.BooleanOptionalAction
     parser.add_argument(
@@ -174,6 +180,9 @@ def main():
     logger = get_logger(__name__)
     logger.info("Starting PDDL Planning Framework")
 
+    _set_global_seed(args.seed)
+    logger.info("Random seed set to %d", args.seed)
+
     args.output_dir = _resolve_output_dir(args)
     _validate_paths(args.problems_path, args.weights_path, logger)
 
@@ -192,12 +201,28 @@ def main():
         sys.exit(1)
 
 
+def _set_global_seed(seed: int) -> None:
+    """Seed torch / numpy / python globally so sampling is reproducible."""
+    import random
+    import numpy as np
+    import torch
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
 def _validate_paths(problems_path: str, weights_path: str, logger: logging.Logger) -> None:
     """Ensure the provided directories exist before running the planner."""
     if not Path(problems_path).exists():
         logger.error("Problems path does not exist: %s", problems_path)
         sys.exit(1)
-    if not Path(weights_path).exists():
+    # weights_path may be a local directory OR a HuggingFace repo ID
+    # (e.g. "meta-llama/Llama-3.1-8B-Instruct"). HF repo IDs always contain
+    # a "/" but never start with "./" or "/" and never exist on disk.
+    is_hf_repo = "/" in weights_path and not Path(weights_path).exists()
+    if not is_hf_repo and not Path(weights_path).exists():
         logger.error("Model weights path does not exist: %s", weights_path)
         sys.exit(1)
 

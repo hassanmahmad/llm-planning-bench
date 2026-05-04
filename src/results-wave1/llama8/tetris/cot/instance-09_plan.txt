@@ -1,0 +1,12 @@
+(at_two straight0 f1-0f f1-1f)
+(at_two straight1 f2-0f f2-1f)
+(move_square f0-0f f4-0f square0)
+
+--- Processing Metadata ---
+Domain: tetris
+Problem: instance-09
+Iterations: 1
+Plan Valid: True
+Condition: cot
+Model: llama8
+First Valid Iteration: 1

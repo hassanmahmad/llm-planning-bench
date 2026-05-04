@@ -1,0 +1,10 @@
+
+
+--- Processing Metadata ---
+Domain: tetris
+Problem: instance-15
+Iterations: 4
+Plan Valid: False
+Condition: baseline
+Model: llama8
+First Valid Iteration: null

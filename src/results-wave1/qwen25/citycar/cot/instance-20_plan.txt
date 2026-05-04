@@ -1,0 +1,10 @@
+(car_arrived junction3-3 car4)
+
+--- Processing Metadata ---
+Domain: citycar
+Problem: instance-20
+Iterations: 4
+Plan Valid: False
+Condition: cot
+Model: qwen25
+First Valid Iteration: null

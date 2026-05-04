@@ -1,0 +1,10 @@
+(not (in_place road0)
+
+--- Processing Metadata ---
+Domain: citycar
+Problem: instance-12
+Iterations: 2
+Plan Valid: True
+Condition: baseline
+Model: qwen25
+First Valid Iteration: 2

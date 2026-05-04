@@ -1,0 +1,6 @@
+(putdown b8)
+(putdown b5)
+(putdown b4)
+(pickup b3)
+(pickup b5)
+(pickup b4)

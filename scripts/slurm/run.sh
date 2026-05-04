@@ -63,6 +63,7 @@ case "${MODEL}" in
   llama8)
     PROFILE="small"
     HF_REPO="meta-llama/Llama-3.1-8B-Instruct"
+    LOCAL_WEIGHTS="src/models/Llama3"
     TP_SIZE=1
     DTYPE="bfloat16"
     QUANTIZATION=""
@@ -70,6 +71,7 @@ case "${MODEL}" in
   qwen25)
     PROFILE="mid"
     HF_REPO="Qwen/Qwen2.5-32B-Instruct"
+    LOCAL_WEIGHTS="src/models/Qwen25"
     TP_SIZE=2
     DTYPE="bfloat16"
     QUANTIZATION=""
@@ -77,6 +79,7 @@ case "${MODEL}" in
   llama33)
     PROFILE="large"
     HF_REPO="meta-llama/Llama-3.3-70B-Instruct"
+    LOCAL_WEIGHTS="src/models/Llama33"
     TP_SIZE=2
     DTYPE="auto"
     QUANTIZATION="fp8"
@@ -87,8 +90,19 @@ case "${MODEL}" in
     ;;
 esac
 
+# Prefer pre-downloaded local weights; fall back to HF repo (auto-download).
+if [ -f "${LOCAL_WEIGHTS}/config.json" ]; then
+  WEIGHTS_PATH="${LOCAL_WEIGHTS}"
+  WEIGHTS_SOURCE="local"
+else
+  WEIGHTS_PATH="${HF_REPO}"
+  WEIGHTS_SOURCE="hf-download"
+fi
+
 echo "Profile:       ${PROFILE}"
 echo "HF repo:       ${HF_REPO}"
+echo "Local dir:     ${LOCAL_WEIGHTS}"
+echo "Weights:       ${WEIGHTS_PATH} (${WEIGHTS_SOURCE})"
 echo "TP size:       ${TP_SIZE}"
 echo "dtype:         ${DTYPE}"
 echo "quantization:  ${QUANTIZATION:-<none>}"
@@ -122,6 +136,14 @@ export HF_MODEL_REPO="${HF_REPO}"
 export VLLM_TP_SIZE="${TP_SIZE}"
 export VLLM_DTYPE="${DTYPE}"
 export VLLM_QUANTIZATION="${QUANTIZATION}"
+
+# HF cache → $WORK so the 16–140GB model weights don't fill the home quota.
+# $WORK is set by the Leonardo module env; fall back to $HOME if not.
+HF_CACHE_ROOT="${WORK:-$HOME}/hf_cache"
+mkdir -p "${HF_CACHE_ROOT}"
+export HF_HOME="${HF_CACHE_ROOT}"
+export TRANSFORMERS_CACHE="${HF_CACHE_ROOT}"
+echo "HF cache:      ${HF_HOME}"
 
 echo "Python:        $(python --version 2>&1)"
 if command -v nvidia-smi &>/dev/null; then
@@ -159,7 +181,7 @@ OUTPUT_DIR="src/results"
 
 MAIN_ARGS=(
   --problems_path "${PROBLEMS_PATH}"
-  --weights_path  "src/models"
+  --weights_path  "${WEIGHTS_PATH}"
   --output_dir    "${OUTPUT_DIR}"
   --model         "${MODEL}"
   --domain        "${DOMAIN}"

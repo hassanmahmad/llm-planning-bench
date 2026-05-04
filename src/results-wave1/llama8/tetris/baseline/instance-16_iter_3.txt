@@ -1,0 +1,4 @@
+(move_square f0-0f f13-1f square0)
+(move_square f0-1f f13-1f square1)
+(move_square f13-1f f13-2f square0)
+(move_square f13-1f f13-3f square1)

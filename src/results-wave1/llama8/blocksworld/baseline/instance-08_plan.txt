@@ -1,0 +1,14 @@
+(pickup b1)
+(pickup b2)
+(pickup b4)
+(pickup b5)
+(drop b6)
+
+--- Processing Metadata ---
+Domain: blocksworld
+Problem: instance-08
+Iterations: 4
+Plan Valid: False
+Condition: baseline
+Model: llama8
+First Valid Iteration: null
