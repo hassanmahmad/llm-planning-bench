@@ -25,7 +25,10 @@ domains:
   available: [blocksworld, citycar, tetris, basic_move, folding, gripper, hanoi, labyrinth, logistics, monkey, shoe-sock, travel]
 
 models:
-  active: [llama8, qwen25, llama33]
+  # Core slate (waves 1–2): proposal §3.2 — Llama8, Qwen2.5-32B, Llama-3.3-70B.
+  # Wave 3 exploratory additions (run after wave 2): qwq32, mistral24.
+  # See glowing-baking-turing.md §2b for reasoning.
+  active: [llama8, qwen25, llama33, qwq32, mistral24]
 
 conditions: [baseline, cot]
 

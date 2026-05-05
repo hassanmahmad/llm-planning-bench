@@ -17,9 +17,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-# Override model list for staged submission, e.g. for two-wave rollouts:
-#   MODELS_OVERRIDE="llama8 qwen25" bash scripts/slurm/submit_all.sh   # wave 1
-#   MODELS_OVERRIDE="llama33"       bash scripts/slurm/submit_all.sh   # wave 2
+# Override model list for staged submission, e.g. for three-wave rollouts:
+#   MODELS_OVERRIDE="llama8 qwen25"     bash scripts/slurm/submit_all.sh   # wave 1
+#   MODELS_OVERRIDE="llama33"           bash scripts/slurm/submit_all.sh   # wave 2
+#   MODELS_OVERRIDE="qwq32 mistral24"   bash scripts/slurm/submit_all.sh   # wave 3 (post wave 2)
+# Wave 3 is the exploratory comparison set — see glowing-baking-turing.md §2b/§12.
 if [ -n "${MODELS_OVERRIDE:-}" ]; then
   # shellcheck disable=SC2206
   MODELS=( ${MODELS_OVERRIDE} )
@@ -47,9 +49,11 @@ DRY_RUN="${DRY_RUN:-0}"
 # -------------------------------------------------
 profile_for() {
   case "$1" in
-    llama8)  echo "small"  ;;
-    qwen25)  echo "mid"    ;;
-    llama33) echo "large"  ;;
+    llama8)    echo "small"  ;;
+    qwen25)    echo "mid"    ;;
+    llama33)   echo "large"  ;;
+    qwq32)     echo "mid"    ;;  # wave 3: same base as qwen25
+    mistral24) echo "mid"    ;;  # wave 3: 24B dense, fits the qwen25 envelope
     *) echo "unknown"; return 1 ;;
   esac
 }

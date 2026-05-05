@@ -176,7 +176,7 @@ Base template: [`../dascenzogentili2425-master/scripts/gemma3_iters_4_tetris.sh`
 - [x] Three SBATCH profiles (branch on `$MODEL`):
   - `small`: 1× A100-80GB, 3h walltime — for `llama8`
   - `mid`: 2× A100-80GB TP=2, 10h walltime — for `qwen25`
-  - `large`: 2× A100-80GB TP=2 FP8 via vLLM, 14h walltime — for `llama33`
+  - `large`: 2× A100-80GB TP=2 FP8, 14h walltime — for `llama33`
 - [x] Inside the job: load generation config from `config.yml`; log it to the job stdout **at job start** for §2.4 verification
 - [x] `scripts/slurm/submit_all.sh` iterates 3 models × 3 domains × 2 conditions and submits 18 `sbatch` jobs
 - [x] Output paths: `src/results/{model}/{domain}/{condition}/`

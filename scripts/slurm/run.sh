@@ -4,9 +4,12 @@
 # STEPS.md §1.4 — one script, three SBATCH profiles, branched on $MODEL.
 #
 # Inputs (environment variables, set by submit_all.sh):
-#   MODEL       one of: llama8 | qwen25 | llama33
+#   MODEL       one of: llama8 | qwen25 | llama33 | qwq32 | mistral24
 #   DOMAIN      one of: blocksworld | citycar | tetris
 #   CONDITION   one of: baseline | cot
+#
+# qwq32 / mistral24 are wave-3 exploratory additions (post wave 2);
+# see glowing-baking-turing.md §2b for the reasoning.
 #
 # Submit manually with, e.g.:
 #   MODEL=llama8 DOMAIN=tetris CONDITION=cot sbatch scripts/slurm/run.sh
@@ -57,7 +60,10 @@ echo "=========================================="
 # -------------------------------------------------
 # Profile branch — derived from $MODEL.
 # submit_all.sh already picked --time/--gres for us;
-# these values drive the in-job vLLM launch config.
+# the TP_SIZE / DTYPE / QUANTIZATION values below are echoed to the
+# job log for the §2.4 audit trail. Generation itself uses HF
+# transformers with device_map="auto" (see src/core/model_manager.py)
+# and ignores these knobs.
 # -------------------------------------------------
 case "${MODEL}" in
   llama8)
@@ -84,8 +90,32 @@ case "${MODEL}" in
     DTYPE="auto"
     QUANTIZATION="fp8"
     ;;
+  qwq32)
+    # Wave 3: same Qwen2.5-32B base as qwen25 + reasoning post-training.
+    # QwQ emits <think>...</think> traces — model_manager.clean_response_text
+    # already strips them before re-prompting.
+    PROFILE="mid"
+    HF_REPO="Qwen/QwQ-32B"
+    LOCAL_WEIGHTS="src/models/QwQ32"
+    TP_SIZE=2
+    DTYPE="bfloat16"
+    QUANTIZATION=""
+    ;;
+  mistral24)
+    # Wave 3: cross-family addition at the qwen25 size band.
+    # Using the 2501 text-only release (MistralForCausalLM) — the 2503/"3.1"
+    # release is multimodal (Mistral3ForConditionalGeneration) and would need
+    # vLLM + mistral_common, which is out of scope for the transformers-based
+    # harness. 2501 is the same 24B dense model, same family, same param band.
+    PROFILE="mid"
+    HF_REPO="mistralai/Mistral-Small-24B-Instruct-2501"
+    LOCAL_WEIGHTS="src/models/MistralSmall"
+    TP_SIZE=2
+    DTYPE="bfloat16"
+    QUANTIZATION=""
+    ;;
   *)
-    echo "ERROR: unknown MODEL='${MODEL}' (expected llama8|qwen25|llama33)" >&2
+    echo "ERROR: unknown MODEL='${MODEL}' (expected llama8|qwen25|llama33|qwq32|mistral24)" >&2
     exit 2
     ;;
 esac
@@ -133,9 +163,6 @@ source "${VENV_DIR}/bin/activate"
 export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
 export LLM_PROJECT_ROOT="$(pwd)"
 export HF_MODEL_REPO="${HF_REPO}"
-export VLLM_TP_SIZE="${TP_SIZE}"
-export VLLM_DTYPE="${DTYPE}"
-export VLLM_QUANTIZATION="${QUANTIZATION}"
 
 # HF cache → $WORK so the 16–140GB model weights don't fill the home quota.
 # $WORK is set by the Leonardo module env; fall back to $HOME if not.
@@ -193,6 +220,20 @@ MAIN_ARGS=(
 )
 if [ -n "${INSTANCE}" ]; then
   MAIN_ARGS+=(--instance "${INSTANCE}")
+fi
+
+# Wave 3: QwQ-32B emits long <think>...</think> reasoning traces before the
+# final answer. The wave-1/2 cap of 8192 was already tight for llama8 on
+# citycar/tetris (see report/wave1_findings.md §5); QwQ needs more headroom.
+# Pre-cleared in glowing-baking-turing.md §12.6 — wave-3 cells are reported
+# as exploratory, not part of the controlled study's identical-config claim.
+if [ "${MODEL}" = "qwq32" ]; then
+  MAIN_ARGS+=(--max_tokens 12288)
+fi
+# Caller can also pin a custom cap via the MAX_TOKENS env var
+# (overrides the per-model default above).
+if [ -n "${MAX_TOKENS:-}" ]; then
+  MAIN_ARGS+=(--max_tokens "${MAX_TOKENS}")
 fi
 
 echo "Command: python src/main.py ${MAIN_ARGS[*]}"

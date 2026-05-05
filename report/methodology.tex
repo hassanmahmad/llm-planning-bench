@@ -47,7 +47,7 @@ appended to \texttt{run\_metrics.csv}; the final plan is written to
 \node[box]                                      (cfg)   {\texttt{config.yml}\\(single source of truth)};
 \node[box, below=of cfg]                        (sub)   {\texttt{submit\_all.sh}\\($3{\times}3{\times}2 = 18$ sbatches)};
 \node[cell, below=of sub]                       (cell)  {SLURM cell --- \texttt{run.sh}\\$(M, D, C)$: 20 instances, up to 4 iters};
-\node[box, below=of cell, xshift=-28mm]         (llm)   {LLM\\(vLLM, TP-split)};
+\node[box, below=of cell, xshift=-28mm]         (llm)   {LLM\\(HF \texttt{transformers},\\ \texttt{device\_map="auto"})};
 \node[box, below=of cell]                       (val)   {VAL\\(\texttt{validate\_plan\_verbose})};
 \node[box, below=of cell, xshift=28mm]          (met)   {Metrics\\(extractor $\to$ CSV)};
 \node[box, below=of val]                        (out)   {\texttt{results/\{model\}/\{domain\}/\{condition\}/}\\($\star$ plans, $\star$ iter dumps, run\_metrics.csv)};

@@ -12,3 +12,7 @@ __pycache__
 VAL
 
 .venv
+
+src/results-w12
+src/results-wave1
+src/results-wave1-fixed

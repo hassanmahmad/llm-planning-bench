@@ -8,7 +8,7 @@ every bug is caught on the cheapest possible hardware.
 |-------|------------|---------------|---------|
 | 1. Stub smoke     | STEPS.md §0.7, `--model stub`                                  | laptop, CPU           | pipeline plumbing (prompt → VAL → CSV writers, iteration loop) |
 | 2. Local real LLM | a small HF model loaded via `transformers`, optional 4-bit     | laptop, RTX 2060 6 GB | real generation behaviour (postprocessor, VAL on real plans, early-stop logic) |
-| 3. HPC shakedown  | one SLURM cell, one instance                                   | Leonardo, small profile | Leonardo infra (modules, venv, HF cache, vLLM, gated weights) |
+| 3. HPC shakedown  | one SLURM cell, one instance                                   | Leonardo, small profile | Leonardo infra (modules, venv, HF cache, gated weights) |
 | 4. Full 18-cell   | `submit_all.sh`                                                | Leonardo, all 3 profiles | the actual experiment |
 
 Do not skip a stage just because the previous one passed. The failure
@@ -177,7 +177,6 @@ python -m venv project_venv
 source project_venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
-pip install vllm   # vLLM isn't in requirements — HPC-only
 
 # Linux VAL binary (Windows .exe won't run here)
 #   Drop the Linux build into VAL/ and flip config.yml:
@@ -251,7 +250,7 @@ All four pass → Stage 3 green.
 | `module: command not found` | Add `source /etc/profile.d/modules.sh` before `module load`. |
 | `ERROR: Virtual environment not found!` | `run.sh` checks `project_venv` → `venv` → `.venv`; name your venv accordingly or create a symlink. |
 | `ERROR: Not in LLM-Needs-a-Plan project directory!` | `sbatch` inherits the submitting cwd; submit from the project root (not from `scripts/slurm/`). |
-| vLLM `ImportError` or CUDA/torch ABI mismatch | Pin torch to the version vLLM's wheel was built for (currently torch 2.5.x for vllm 0.6.x). Reinstall in the venv. |
+| `transformers` / torch CUDA ABI mismatch on first import | The pinned `torch==2.7.0` + `transformers==4.51.3` in `requirements.txt` are tested together; if `pip` resolved a different torch on Leonardo, reinstall: `pip install --force-reinstall torch==2.7.0 transformers==4.51.3`. |
 | `OSError: You are trying to access a gated repo` | `HF_TOKEN` not exported on the *compute* node. `--export=ALL` in `run.sh` carries it, but only if it's set in your login shell at sbatch time. |
 | Weights download hangs | Compute node firewalled — prefetch on login node: `huggingface-cli download meta-llama/Llama-3.1-8B-Instruct`. |
 | Out-of-memory on 1 × A100-80 GB | llama8 at FP16 uses ~16 GB; if OOM, suspect leaked context or too-high `max_new_tokens` — check config.yml. |

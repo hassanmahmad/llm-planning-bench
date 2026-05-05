@@ -43,18 +43,44 @@ This plan delivers the team's four stated objectives:
 
 ## 2. Model slate (matches proposal §3.2)
 
-| Alias    | HF repo                               | Family    | Params | Role                          |
-|----------|---------------------------------------|-----------|--------|-------------------------------|
-| llama8   | `meta-llama/Llama-3.1-8B-Instruct`    | Meta      | 8B     | Retained from Project B; **intra-family scale anchor (small)** |
-| qwen25   | `Qwen/Qwen2.5-32B-Instruct`           | Alibaba   | 32B    | **New addition** — different family, recent, dense mid-size |
-| llama33  | `meta-llama/Llama-3.3-70B-Instruct`   | Meta      | 70B    | Retained from Project A; **intra-family scale anchor (large)** |
+### 2a. Core slate (waves 1–2, the proposal's 18 cells)
+
+| Alias    | HF repo                               | Family    | Params | Wave | Role                          |
+|----------|---------------------------------------|-----------|--------|------|-------------------------------|
+| llama8   | `meta-llama/Llama-3.1-8B-Instruct`    | Meta      | 8B     | 1    | Retained from Project B; **intra-family scale anchor (small)** |
+| qwen25   | `Qwen/Qwen2.5-32B-Instruct`           | Alibaba   | 32B    | 1    | **New addition** — different family, recent, dense mid-size |
+| llama33  | `meta-llama/Llama-3.3-70B-Instruct`   | Meta      | 70B    | 2    | Retained from Project A; **intra-family scale anchor (large)** |
 
 **Why this slate**:
 - **Two Llama variants (8B + 70B)** → supports the proposal's implied "same-family scale effect" comparison (does a 9× parameter jump within the same family improve PDDL planning?).
-- **Qwen2.5-32B** → different architectural family (Alibaba), sits between 8B and 70B by params, dense (no MoE), recent release. Preferred over DeepSeek (MoE complicates serving) and Mistral (Mistral-Small-24B is a sensible swap if Qwen is unavailable).
-- All three dense → lets the "params vs success rate" plot stay interpretable.
+- **Qwen2.5-32B** → different architectural family (Alibaba), sits between 8B and 70B by params, dense (no MoE), recent release.
+- All three dense → the "params vs success rate" plot stays interpretable.
 
-**Third-model swap flexibility**: if Qwen2.5-32B has availability issues, candidate alternates are `mistralai/Mistral-Small-24B-Instruct-2501` or `Qwen/Qwen2.5-14B-Instruct` (cheaper). Decision-by date: end of Day 0.
+### 2b. Wave 3 — exploratory comparison additions
+
+Wave 1 ([report/wave1_findings.md](report/wave1_findings.md)) showed a stark result on the 12 wave-1 cells: only `qwen25/blocksworld` produced any solves (5/120), and `llama8` did not solve a single instance across any of its 6 cells. Vanilla instruction-tuned models appear to be the bottleneck, not the harness or prompts. Two additions probe two distinct hypotheses while keeping all other axes (domains, prompts, generation config, iteration policy) unchanged:
+
+| Alias      | HF repo                                              | Family    | Params | Hypothesis tested |
+|------------|------------------------------------------------------|-----------|--------|-------------------|
+| qwq32      | `Qwen/QwQ-32B`                                       | Alibaba   | 32B    | Does **reasoning-style post-training** on the same base lift solve rate? |
+| mistral24  | `mistralai/Mistral-Small-24B-Instruct-2501`          | Mistral   | 24B    | Does a **fourth, recent dense family** at the qwen25 size band behave differently? |
+
+**Why these two specifically**:
+- **`qwq32`** is built on the same Qwen2.5-32B base as `qwen25`, with reasoning-style post-training added. Pairing it with `qwen25` isolates "reasoning post-training" as the *only* changing variable — the cleanest controlled comparison the slate can support given wave 1's finding that the qwen25/blocksworld cell is the only one with traction. If reasoning post-training helps PDDL planning, qwq32 should show measurable solve-rate gain on blocksworld and meaningful vap (valid-action %) gain on citycar/tetris over qwen25 under both prompting conditions.
+- **`mistral24`** adds a fourth model family (Mistral) at almost the same parameter count as `qwen25` (24B vs 32B). It tests whether the wave-1 cross-family signal (Meta-8B at 0/120 vs Alibaba-32B at 5/120) replicates when we swap in another vendor at the same scale band — i.e., whether the gap is "Meta vs Alibaba" or "small vs mid-size", or genuinely model-specific. We use the **2501 text-only release** (`Mistral-Small-24B-Instruct-2501`) rather than the more recent 2503 / "3.1" release: the 3.1 release is multimodal (`Mistral3ForConditionalGeneration`, requires vLLM + `mistral_common` tokenizer) and would force a backend swap that breaks parity with waves 1/2. The 2501 release is the same 24B dense model and the direct text-only ancestor of 3.1, loadable via the existing `AutoModelForCausalLM` path.
+
+**Why not other candidates considered**:
+- `deepseek-ai/DeepSeek-R1-Distill-Qwen-32B` — overlaps too heavily with `qwq32` (both are reasoning-distilled Qwen2.5-32B variants). Pick one; QwQ is the original-vendor release.
+- `google/gemma-3-27b-it` — adds Google as a fifth family, attractive but Gemma3-27B is already covered in Project B's prior runs and wave 3 budget is tight.
+- `microsoft/phi-4` (14B) — already used in Project B; adds little new information.
+- Full `DeepSeek-V3` / `R1` — 671B MoE, won't fit on Leonardo's 4× A100-64GB nodes within the proposal's compute envelope.
+- `Qwen/Qwen3-30B-A3B-Instruct` — MoE complicates serving; the proposal's "all dense" interpretability constraint applies.
+
+**Wave 3 additive cell count**: 2 models × 3 domains × 2 conditions = **12 extra cells**, run after wave 2 completes. The core 18-cell deliverable (proposal §3.4) is unaffected — wave 3 is reported in a separate "exploratory extensions" section of the report.
+
+**Caveat for `qwq32`**: it emits a `<think>...</think>` reasoning trace before the final answer. The harness already strips these via `clean_response_text` in [src/core/model_manager.py](src/core/model_manager.py) before re-prompting on iter 2+, so iteration accounting is clean, but completion-token totals on `qwq32` cells will run noticeably higher than `qwen25`. Worth a 12288-token cap (vs the wave-1/2 cap of 8192) for QwQ to avoid the cap-collision pattern that hit `llama8` in wave 1 (see [report/wave1_findings.md §5](report/wave1_findings.md)).
+
+**Third-model swap flexibility (core slate)**: if Qwen2.5-32B had availability issues, candidate alternates were `mistralai/Mistral-Small-24B-Instruct-2501` or `Qwen/Qwen2.5-14B-Instruct`. With wave 3, `mistral24` is now part of the slate explicitly, so this fallback collapses naturally.
 
 ### Standardized generation config (applied to every model, logged per job)
 
@@ -263,6 +289,104 @@ Roles:
 | §4.1 Compute (CINECA) | HPC confirmed; fallback in §9 |
 | §4.2 Data reuse (open) | Current default: no reuse; §9 last row handles alternative |
 | §4.3 Deliverable format (open) | Report + slides + repo assumed; Day 4 covers all three |
+
+## 12. Wave 3 — running the exploratory additions
+
+Wave 3 launches **after wave 2 finishes** (i.e. all six `llama33/{domain}/{condition}` cells from [scripts/slurm/SUBMITTED.md](scripts/slurm/SUBMITTED.md) are in the `COMPLETED` state and `src/results/llama33/**/run_metrics.csv` files are populated). Wave 3 reuses the same parametric pipeline — it is just two more entries in `MODELS_OVERRIDE`.
+
+### 12.1 Pre-flight (run on a Leonardo login node, from project root)
+
+Leonardo Booster compute nodes have **no outbound internet access**, so weights must be staged from the login node before any `sbatch` runs. We use the same `src/models/<dir>` convention as waves 1 and 2 — `run.sh` detects `${LOCAL_WEIGHTS}/config.json` and resolves `WEIGHTS_SOURCE=local`, avoiding any HF cache lookup at job time.
+
+```bash
+# 1. Confirm wave 2 finished cleanly (all 6 llama33 cells present)
+ls src/results/llama33/*/{baseline,cot}/run_metrics.csv | wc -l   # → expect 6
+
+# 2. HF auth — both repos are gated. Visit each model card once in a browser
+#    to accept the license, then log in with a read-token from
+#    huggingface.co/settings/tokens
+huggingface-cli login
+
+# 3. Download weights into src/models/<dir> (same layout as waves 1–2).
+#    --local-dir-use-symlinks=False writes real files (not cache symlinks)
+#    so the dir is self-contained and survives an HF cache wipe on $WORK.
+huggingface-cli download Qwen/QwQ-32B \
+  --local-dir src/models/QwQ32 \
+  --local-dir-use-symlinks False
+
+huggingface-cli download mistralai/Mistral-Small-24B-Instruct-2501 \
+  --local-dir src/models/MistralSmall \
+  --local-dir-use-symlinks False
+
+# 4. Sanity check — config.json must exist for run.sh's "local" branch to fire
+[ -f src/models/QwQ32/config.json ]        && echo "qwq32 OK"
+[ -f src/models/MistralSmall/config.json ] && echo "mistral24 OK"
+
+# 5. Smoke-test prompts locally with the stub backend (no GPU needed,
+#    confirms the prompt pipeline still parses for both new model aliases).
+bash scripts/local/smoke_test.sh
+```
+
+**Disk budget**: `Qwen/QwQ-32B` ≈ 64 GB, `Mistral-Small-24B-Instruct-2501` ≈ 48 GB. Together with the wave-1/2 weights already in `src/models/`, total project-tree weight footprint is ~250 GB. `src/models/` should live on `$WORK` (typically 1 TB on Leonardo), not `$HOME` — symlink the dir if needed:
+
+```bash
+# One-time, only if src/models/ is currently on $HOME:
+mv src/models "${WORK}/llm-planning-bench-models"
+ln -s "${WORK}/llm-planning-bench-models" src/models
+```
+
+### 12.2 Submit wave 3 (12 cells)
+
+```bash
+# From project root, on Leonardo login node:
+MODELS_OVERRIDE="qwq32 mistral24" bash scripts/slurm/submit_all.sh
+```
+
+`submit_all.sh` will create 12 sbatch jobs (2 models × 3 domains × 2 conditions), each on the `mid` profile (`--time=10:00:00 --gres=gpu:2`, matches `qwen25`). Track them in [scripts/slurm/SUBMITTED.md](scripts/slurm/SUBMITTED.md) — a fresh dated block is appended on every run.
+
+### 12.3 Monitor
+
+```bash
+squeue -u "$USER" -o "%.10i %.30j %.2t %.10M %.20R"
+tail -f scripts/slurm/logs/qwq32_blocksworld_baseline_*.out
+```
+
+### 12.4 Verify per-cell
+
+After each cell completes, check the run produced 1–4 rows per instance in `run_metrics.csv` and the `prompting_condition` column is populated:
+
+```bash
+python - <<'PY'
+import pandas as pd, glob
+for f in sorted(glob.glob("src/results/{qwq32,mistral24}/*/{baseline,cot}/run_metrics.csv")):
+    df = pd.read_csv(f)
+    n_inst = df["instance"].nunique()
+    n_solv = df.groupby("instance")["solves_problem"].any().sum()
+    print(f"{f}: {len(df)} rows, {n_inst} instances, {n_solv} solved")
+PY
+```
+
+### 12.5 Ingest into the analysis notebook
+
+`notebooks/results_analysis.ipynb` reads from `src/results/**/run_metrics.csv` via a glob, so the wave-3 cells appear automatically once present. Re-run the notebook end-to-end. Two new comparisons fall out of the wave-3 data and should be added as report figures:
+
+1. **`qwq32` vs `qwen25`** at matched (domain, condition) — isolates the reasoning-post-training effect on the same base. Plot solve-rate Δ + mean-vap Δ with paired-by-instance 95% CIs.
+2. **`mistral24` vs `qwen25`** at matched (domain, condition) — cross-family comparison at the same parameter band. Plot the same two deltas.
+
+If `qwq32` does not lift solve rate over `qwen25` on blocksworld, the discussion should note that reasoning post-training does not transfer to PDDL planning under our prompting setup — a result worth reporting either way.
+
+### 12.6 Risks specific to wave 3
+
+| Risk | Fallback |
+|------|----------|
+| `qwq32` think-trace blows past 8192-token cap and the harness extracts an incomplete plan | Bump `--max_tokens 12288` in the wave-3 sbatch flags, or in `config.yml > generation.max_new_tokens` (pre-cleared to differ from waves 1–2 since this is exploratory, not part of the proposal's controlled study). Document the per-wave cap in the report's reproducibility section. |
+| `Mistral-Small-24B-Instruct-2501` chat template not auto-detected by the tokenizer | `model_manager.py._format_messages` already falls back to a minimal template; verify on a single instance via the smoke test before launching all 12 cells. |
+| Leonardo queue saturated with wave 2 leftovers | Run wave 3 sequentially per model (`MODELS_OVERRIDE="qwq32"` then `MODELS_OVERRIDE="mistral24"`) instead of both at once. |
+| Wave 3 results contradict wave 1's "qwen25 is the only solver" finding in a way that undermines the headline | Add to limitations rather than re-running wave 1; the controlled study's claim is bounded to its slate by design. |
+
+### 12.7 Reporting
+
+Wave 3 lives in a dedicated **§Exploratory Extensions** subsection in the report, *not* the headline §Results. Phrasing pattern: "Beyond the proposal's three-model slate, we ran two additional models (`qwq32`, `mistral24`) on the same 6 (domain, condition) cells to probe two specific hypotheses [reasoning post-training; family-band invariance]. Findings extend, but do not replace, the controlled three-family comparison."
 
 ---
 

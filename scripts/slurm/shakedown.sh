@@ -3,7 +3,7 @@
 # First-time Leonardo shakedown — ONE cell, ONE instance, small profile.
 #
 # Purpose: catch infra issues (account/partition, module load, venv,
-# HF cache / network, vLLM+CUDA compat, gated-model auth) before
+# HF cache / network, torch+CUDA compat, gated-model auth) before
 # submit_all.sh fires the full 18 jobs.
 #
 # What it runs:
