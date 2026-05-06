@@ -12,9 +12,11 @@ Unified pipeline for comparing LLM planning performance on PDDL problems with it
 
 ## Status
 
-**Phase: results published.** Waves 1–3 have run on Leonardo; the analysis notebook,
-all 15 plots, and the final write-up live in [report.pdf](report.pdf) and
-[report/](report/). The pipeline below is what was used to produce them.
+**Phase: results published.** Waves 1–3 have run on Leonardo; the analysis
+notebook and all 15 plots live in [notebooks/](notebooks/) and
+[report/figures/](report/figures/), and the final write-up is at
+[report/report.pdf](report/report.pdf) (LaTeX source under [report/](report/)).
+The pipeline below is what was used to produce them.
 
 | Component | Status |
 |---|---|
@@ -32,7 +34,7 @@ all 15 plots, and the final write-up live in [report.pdf](report.pdf) and
 From the [project proposal](../Project%20Proposal%20-%20AI%20in%20Industry.pdf):
 
 1. **Unify** the two prior codebases into a single repository with a consistent pipeline for model loading, plan generation, validation, and results reporting.
-2. **Run a controlled comparative study** of 3 LLM families across 3 planning domains, with standardized prompts and iterative refinement (up to 4 rounds).
+2. **Run a controlled comparative study** of 3 LLM families (5 model checkpoints) across 6 planning domains, with standardized prompts and iterative refinement (up to 4 rounds).
 3. **Address the prompt-bias confound** by using a single unified prompt across all models, so performance differences reflect model capability rather than prompt tuning.
 4. **Produce a comparative analysis** with success rates, iteration-convergence patterns, and domain-specific insights that extend both prior projects.
 
@@ -40,23 +42,35 @@ From the [project proposal](../Project%20Proposal%20-%20AI%20in%20Industry.pdf):
 
 ### Domains
 
-| Domain | Reasoning Challenge | Source |
-|---|---|---|
-| Blocksworld | Sequential state-space search, constraint chaining | Project A (Merola et al.) |
-| City Car | Multi-agent coordination, infrastructure management | Project B (D'Ascenzo & Gentili) |
-| Tetris | Spatial / geometric reasoning | Project B (D'Ascenzo & Gentili) |
+Six active domains, split into a "main slate" (20 instances each) and a
+"short slate" (10 instances each, used to broaden domain coverage in waves 2–3):
 
-Three further Project A domains (`basic_move`, `visit-all`, `satellite`) are also active. Eight more (Gripper, Logistics, Hanoi, Folding, Monkey, Travel, Labyrinth, Shoe-Sock) are carried as dormant `domains.available` entries — their PDDL files are present but no natural-language description is wired up; activate by porting a description into [src/prompts/descriptions.py](src/prompts/descriptions.py). See [src/data/README.md](src/data/README.md) for the full domain contract.
-
-### Models (3 families)
-
-| Alias | HF repo | Family | Params | Role |
+| Domain | Slate | n | Reasoning Challenge | Source |
 |---|---|---|---|---|
-| `llama8` | [`meta-llama/Llama-3.1-8B-Instruct`](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) | Meta | 8B | Retained from Project B; intra-family scale anchor (small) |
-| `qwen25` | [`Qwen/Qwen2.5-32B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-32B-Instruct) | Alibaba | 32B | **New** — different family, dense mid-size |
-| `llama33` | [`meta-llama/Llama-3.3-70B-Instruct`](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) | Meta | 70B | Retained from Project A; intra-family scale anchor (large) |
+| Blocksworld | main | 20 | Sequential state-space search, constraint chaining | Project A (Merola et al.) |
+| City Car | main | 20 | Multi-agent coordination, infrastructure management | Project B (D'Ascenzo & Gentili) |
+| Tetris | main | 20 | Spatial / geometric reasoning | Project B (D'Ascenzo & Gentili) |
+| basic_move | short | 10 | Minimal navigation; sanity floor for short-plan tasks | Project A |
+| visit-all | short | 10 | Coverage / traversal planning | IPC (visitall) |
+| satellite | short | 10 | Resource-constrained scheduling with `:equality` | IPC (satellite) |
 
-Fallback for third-model availability: `mistralai/Mistral-Small-24B-Instruct-2501`.
+Eight more domains (Gripper, Logistics, Hanoi, Folding, Monkey, Travel,
+Labyrinth, Shoe-Sock) are carried as dormant `domains.available` entries —
+their PDDL files are present but no natural-language description is wired
+up; activate by porting a description into [src/prompts/descriptions.py](src/prompts/descriptions.py).
+See [src/data/README.md](src/data/README.md) for the full domain contract.
+
+### Models (5 checkpoints, 3 families)
+
+Core slate ran in waves 1–2; the two reasoning/cross-family additions ran in wave 3.
+
+| Alias | HF repo | Family | Params | Wave | Role |
+|---|---|---|---|---|---|
+| `llama8` | [`meta-llama/Llama-3.1-8B-Instruct`](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) | Meta | 8B | 1–2 | Retained from Project B; intra-family scale anchor (small) |
+| `qwen25` | [`Qwen/Qwen2.5-32B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-32B-Instruct) | Alibaba | 32B | 1–2 | Different family, dense mid-size |
+| `llama33` | [`meta-llama/Llama-3.3-70B-Instruct`](https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct) | Meta | 70B | 1–2 | Retained from Project A; intra-family scale anchor (large) |
+| `qwq32` | [`Qwen/QwQ-32B`](https://huggingface.co/Qwen/QwQ-32B) | Alibaba | 32B | 3 | Reasoning-trained sibling of `qwen25` (`<think>` traces stripped pre-validation) |
+| `mistral24` | [`mistralai/Mistral-Small-24B-Instruct-2501`](https://huggingface.co/mistralai/Mistral-Small-24B-Instruct-2501) | Mistral | 24B | 3 | Third-family reference point, dense mid-size |
 
 ### Prompting conditions
 
@@ -73,7 +87,11 @@ Both conditions share a single harmonized system prompt and one validation-feedb
 
 ### Cell matrix
 
-3 models × 3 domains × 2 conditions = **18 cells**, 20 instances per (domain, condition). Upper-bound generation count is 1,440; actual count depends on how early cells converge.
+5 models × 6 domains × 2 conditions = **60 cells**. Instance count varies by
+slate: 20 per (domain, condition) for the main slate (blocksworld, citycar,
+tetris) and 10 for the short slate (basic_move, visit-all, satellite) —
+90 instances per (model, condition) total. Upper-bound generation count is
+3,600 (90 × 5 × 2 × 4); actual count depends on how early cells converge.
 
 ### Metrics
 
@@ -236,9 +254,10 @@ llm-planning-bench/
 │   ├── models/
 │   │   └── stub.py                        # local smoke-test backend
 │   ├── data/
-│   │   ├── blocksworld/  citycar/  tetris/   # active
-│   │   └── {basic_move,folding,gripper,hanoi,labyrinth,logistics,monkey,shoe-sock,travel}/  # dormant
-│   ├── results/
+│   │   ├── blocksworld/  citycar/  tetris/                  # active, main slate (20 instances each)
+│   │   ├── basic_move/  visit-all/  satellite/              # active, short slate (10 instances each)
+│   │   └── {folding,gripper,hanoi,labyrithn,logistics,monkey,shoe-sock,travel}/  # dormant
+│   ├── results-final/                                       # checked-in run outputs (path is git-ignored as `src/results-final`)
 │   │   └── {model}/{domain}/{condition}/
 │   │       ├── instance-XX_iter_{k}.txt
 │   │       ├── instance-XX_plan.txt
@@ -307,6 +326,8 @@ Planning problems are PDDL instances from the [potassco/pddl-instances](https://
 - [Tetris (IPC 2014)](https://github.com/potassco/pddl-instances/tree/master/ipc-2014/domains/tetris-sequential-satisficing) — carried from Project B
 - [City Car (IPC 2014)](https://github.com/potassco/pddl-instances/tree/master/ipc-2014/domains/city-car-sequential-satisficing) — carried from Project B
 - **Blocksworld** — carried from Project A's [`problem_dataset/problems_all/blocksworld/`](../merolasinghdardouri2425-master/problem_dataset/problems_all/blocksworld/)
+- **basic_move** and **visit-all** — Project A's `problem_dataset` (added in waves 2–3 to broaden domain coverage)
+- **satellite** — IPC satellite domain (`:equality` extension); reference plans in [src/data/satellite/REFERENCE_PLANS.csv](src/data/satellite/REFERENCE_PLANS.csv) were transcribed from Fast Downward, since pyperplan can't parse `:equality`
 
 See [src/data/README.md](src/data/README.md) for per-domain instance details.
 
