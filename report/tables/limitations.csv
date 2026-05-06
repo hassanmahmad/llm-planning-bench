@@ -1,0 +1,9 @@
+caveat,description
+Stop-on-success bias,Iter 2-4 metrics only contain instances that failed at iter 1. Per-iteration aggregates therefore appear to *worsen* across iterations because the easy instances drop out. The cumulative-solve curves (Plot 3) avoid this by using the per-instance first-valid-iter as the x-axis instead.
+Llama-3.3-70B in 4-bit,70B was loaded with NF4 quantization (bitsandbytes) to fit on 2x A100-64GB. The other four models ran in bf16. Quantization noise can cost a few percentage points; treat 70B numbers as a lower bound.
+Wave 3 used max_new_tokens=16384,qwq32 and mistral24 were submitted with a 16384-token output cap; llama8 / qwen25 / llama33 used 8192. Wave 3 was bumped because QwQ's reasoning traces fill ~3-6k tokens before any plan tokens. Cells from waves 1-2 hitting 8192 (notably llama8 in 99% of iters) may have lost late-plan content.
+QwQ TIMEOUT cells,QwQ's long <think>...</think> traces eat the 10h walltime on harder domains. Some qwq32 cells have <20 instances completed; aggregates over these cells are not strictly comparable to fully-completed cells.
+CUDA non-determinism,"torch.use_deterministic_algorithms was not enabled. Re-running an identical cell can produce slightly different outputs even with seed=42, due to non-deterministic CUDA kernels and multi-GPU collective ordering."
+Sampling at T=0.1,"do_sample=True with T=0.1 is narrow but not greedy. Combined with the partial CUDA non-determinism, single-run numbers carry ~1-3 pp noise."
+20 instances per cell,Small-N. Differences smaller than ~5 percentage points between cells should not be over-interpreted. Bootstrap CIs would be a useful follow-up.
+Domain difficulty is not equalized,Blocksworld has 4 actions and short plans (~10 steps); CityCar and Tetris have richer state and longer optimal plans. Difficulty is partially confounded with state-space size.

@@ -1,0 +1,16 @@
+model,domain,baseline_vap_pct,cot_vap_pct,delta_pp
+llama8,blocksworld,17.97,30.85,12.88
+llama8,citycar,9.07,17.44,8.37
+llama8,tetris,22.21,19.37,-2.84
+qwen25,blocksworld,26.49,46.77,20.28
+qwen25,citycar,45.25,15.81,-29.44
+qwen25,tetris,2.62,14.08,11.45
+qwq32,blocksworld,22.57,21.24,-1.33
+qwq32,citycar,18.78,14.83,-3.95
+qwq32,tetris,24.27,45.45,21.18
+mistral24,blocksworld,34.5,50.49,15.98
+mistral24,citycar,18.13,14.29,-3.85
+mistral24,tetris,2.38,2.04,-0.34
+llama33,blocksworld,36.34,31.69,-4.66
+llama33,citycar,15.13,6.31,-8.82
+llama33,tetris,0.0,3.12,3.12
