@@ -334,7 +334,3 @@ See [src/data/README.md](src/data/README.md) for per-domain instance details.
 ## References
 
 Literature reviewed for this study lives in [assets/literature/](assets/literature/).
-
-## Execution Guide
-
-[STEPS.md](STEPS.md) — step-by-step execution guide (Day 0 through Day 4).
