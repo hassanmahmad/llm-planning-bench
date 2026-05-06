@@ -1,6 +1,0 @@
-(at_two straight0 f1-0f f1-1f)
-(at_two straight1 f2-0f f2-1f)
-(move_square f0-0f f11-3f square0)
-(move_square f0-1f f11-2f square1)
-(move_square f0-2f f11-1f square2)
-(move_square f0-3f f11-0f square3)

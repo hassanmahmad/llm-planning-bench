@@ -1,5 +1,0 @@
-(pickup b3)
-(pickup b4)
-(pickup b6)
-(pickup b1)
-(pickup b5)

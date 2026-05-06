@@ -1,0 +1,120 @@
+% ---------------------------------------------------------------------
+% Discussion + Limitations + Conclusions, compact 1.5-page version.
+% ---------------------------------------------------------------------
+
+\section{Discussion}
+\label{sec:discussion}
+
+The 60-cell matrix supports five compact claims.
+
+\paragraph{1. There is a clean simple-vs-complex difficulty cliff.}
+Pooled solve rates are $89\%$, $85\%$, $47\%$ on the three simple
+domains and $9.5\%$, $0.5\%$, $0\%$ on the three complex ones. The
+break is between satellite (mean optimal plan $9.8$ actions) and
+blocksworld (mean $14.4$, max $26$), near the $\sim$8-action ceiling
+of pure-token planning under our setup.
+
+\paragraph{2. Iterative validator feedback contributes a small recovery, not a large one.}
+Cumulative-solve curves are dominated by the iteration-1 column: most
+successes happen on the first attempt or not at all. The single domain
+where validator feedback does meaningful work is blocksworld
+(\texttt{llama33}/baseline reaches mean first-valid iteration $2.5$,
+\texttt{qwen25}/cot reaches $1.67$). On citycar and tetris the loop
+never recovers a failed plan: the failures are not adjacent to a valid
+plan in token space.
+
+\paragraph{3. CoT is task-class-dependent.}
+Of $30$ (model, domain) pairs, CoT helps $9$, hurts $13$, and is
+neutral on $8$. On the simple tier, CoT mostly hurts because the
+reasoning preamble adds noise. On blocksworld, CoT helps the smaller
+and mid-size models substantially (\texttt{llama8} $+13$~pp,
+\texttt{qwen25} $+20$~pp, \texttt{mistral24} $+16$~pp). No model has
+CoT as a uniform upgrade. Practical implication: a deployed planning
+agent should choose CoT per task class, not as a global setting.
+
+\paragraph{4. Reasoning post-training (QwQ-32B) is a net negative for PDDL planning.}
+QwQ-32B loses to Qwen2.5-32B on $9$ of $12$ cells with pooled
+$\Delta\,\text{vap} = -16.4$~pp --- the largest single effect we
+measured. Reasoning post-training appears to optimise for a verbose
+chain-of-thought style~\cite{kojima2022zeroshot,plaat-reasoning} that
+hurts structured-output tasks. The same long traces caused $5$ of $12$
+\texttt{qwq32} cells to TIMEOUT mid-iteration, so some QwQ data is
+right-censored; the direction of the effect is consistent across cells
+regardless. This complements the LLM-Modulo
+position~\cite{kambhampati2024llmmodulo}: even when an external
+validator is available to catch mistakes, a more verbose reasoning
+prior can hurt rather than help on tasks demanding tight,
+parser-friendly output.
+
+\paragraph{5. Intra-family scaling lifts modestly, but quantization confounds the read.}
+Llama-3.3-70B (4-bit) edges Llama-3.1-8B (bf16) by $+10$~pp pooled
+partial validity, with the lift concentrated on satellite ($+30$~pp)
+and blocksworld baseline ($+18$~pp). On tetris the 70B model is
+actually worse. The natural intra-family scaling experiment would
+compare 8B-bf16 to 70B-bf16; we could only run 70B-NF4 because the
+bf16 weights ($\sim$$140$\,GB) do not fit on $2 \times$ A100-64\,GB.
+The ground-truth correlation between optimal plan length and partial
+validity (Figure~\ref{fig:plot15}) confirms the cross-domain
+difficulty ranking is real, not noise.
+
+\section{Limitations}
+\label{sec:limitations}
+
+The most consequential caveats:
+\begin{itemize}
+\item \textbf{4-bit quantization on Llama-3.3-70B} confounds the
+      intra-family scaling read; treat 70B numbers as a lower bound.
+\item \textbf{QwQ-32B used \texttt{max\_new\_tokens=16384}} (vs.\ $8192$
+      for the bf16 models) to fit reasoning traces. Even so, $5$ of
+      $12$ \texttt{qwq32} cells did not complete all $20$ instances
+      within the $10$-hour walltime; their aggregates are over fewer
+      instances and not strictly comparable.
+\item \textbf{Stop-on-success selection bias.} Per-iteration aggregates
+      across cells are dominated by failing instances on iterations
+      $2$--$4$. Cumulative-solve curves
+      (Figure~\ref{fig:plot3}) avoid this by indexing on per-instance
+      first-valid iteration instead.
+\item \textbf{Sampling noise.} Generation used \texttt{do\_sample=True}
+      with $T=0.1$. The seed is plumbed through to torch / numpy /
+      Python random, but multi-GPU collective non-determinism and
+      narrow-temperature sampling combine to give roughly $1$--$3$~pp
+      of run-to-run noise. Differences smaller than $\sim$$5$~pp
+      between cells should not be over-interpreted.
+\item \textbf{Small $n$.} $10$ instances per cell on simple domains,
+      $20$ on complex; bootstrap CIs are a useful follow-up.
+\item \textbf{Numeric fluents not handled by the prompt template.}
+      citycar and tetris use \texttt{:functions}; the prompt shell
+      does not verbalise numeric state. Their near-zero solve rates
+      may partly reflect this rather than pure capacity limitations.
+\end{itemize}
+
+\section{Conclusions}
+\label{sec:conclusions}
+
+We unified two prior student projects on LLM-based PDDL planning into
+a single controlled comparative study, ran a $5$-model $\times\,6$-domain
+$\times\,2$-condition matrix on the Leonardo HPC, and report the
+results above. The two findings most likely to generalise are
+\textbf{(i)~reasoning post-training as instantiated by QwQ-32B is a net
+negative for PDDL planning}, the largest single effect in the study;
+and \textbf{(ii)~chain-of-thought prompting is task-class-dependent},
+helping mid-size models on harder structured problems but hurting on
+simpler problems where the scaffold is just noise. The remaining
+findings rank the planning capability of the slate
+(simple-tier mostly solved; blocksworld the only complex domain where
+the bigger models gain traction; citycar and tetris out of reach
+under the current prompt shell).
+
+The repository is fully reproducible: the analysis notebook
+(\texttt{notebooks/results\_analysis.ipynb}) regenerates every figure
+and table from the raw run-metrics CSVs in \texttt{src/results-final/};
+the SLURM scripts under \texttt{scripts/slurm/} are parametric over
+\texttt{(model, domain, condition)}; and per-instance ground-truth
+difficulty data lives in \texttt{src/data/<domain>/REFERENCE\_PLANS.csv}.
+
+Three concrete extensions would tighten the picture: an FP8 or bf16
+$70$B comparison to remove the quantization confound; extending the
+prompt shell to handle numeric fluents so citycar and tetris become
+tractable; and re-running with bootstrap-CI sample sizes
+($\geq 50$ instances per cell) to test whether the small effects on
+satellite/CoT and visit-all/CoT survive out-of-noise scrutiny.

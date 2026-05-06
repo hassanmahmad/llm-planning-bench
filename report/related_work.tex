@@ -1,0 +1,60 @@
+% ---------------------------------------------------------------------
+% Related work --- compact 2-paragraph version positioning the study
+% against the two source repos.
+% ---------------------------------------------------------------------
+
+\section{Related work}
+\label{sec:related}
+
+Most of the academic literature on LLM-based planning falls into two
+camps: (a)~position and survey work that argues LLMs are weak as
+\emph{stand-alone} planners but useful as proposers inside an
+LLM-Modulo loop with an external solver
+checking each step~\cite{kambhampati2024llmmodulo,plangenllms-survey,plaat-reasoning};
+and (b)~system papers that integrate an LLM with a world model, search
+procedure, or constraint solver to handle long-horizon planning ---
+e.g.\ RAP, LLM-Planner, PRoC3S~\cite{hao2023rap,song2023llmplanner,curtis2024proc3s}.
+Our setup falls in the first camp: the LLM proposes plans, the
+classical \emph{VAL}~\cite{val} validator accepts or rejects, and we
+iterate at most four times.
+
+This study merges and extends two prior 2024/25 student projects at
+Università di Bologna that share that same architecture (LLM
+planner $+$ VAL validator $+$ iterative-feedback loop), but neither
+produced a unified cross-model, cross-domain picture.
+\textbf{Project~A}~\cite{projecta} (Merola, Singh \& Dardouri)
+evaluated a single model (Llama-3.3-70B) across a wide PDDL domain
+suite; we inherit its verbose VAL metrics extractor
+(\texttt{run\_val\_verbose}/\texttt{parse\_val\_output}) into
+\texttt{src/utils/metrics\_extractor.py} and a 20-instance subset of
+its blocksworld pool (mapping in
+\texttt{src/data/blocksworld/INSTANCE\_MAP.csv}). Three further
+Project~A domains (\texttt{basic\_move}, \texttt{visit-all},
+\texttt{satellite}) provide our simple tier; seven remain dormant for
+follow-up work. Project~A's plan-success-confidence \emph{meta-networks}
+are not retained --- our analysis is metric-based.
+\textbf{Project~B}~\cite{projectb} (D'Ascenzo \& Gentili) compared four
+models (LLaMA3-8B, Phi4-14B, Gemma3-27B, Kimi-Dev-72B) on city\_car
+and tetris with a modular HPC framework; we inherit its pipeline
+skeleton (model\_manager, pddl\_processor, file\_manager, SLURM
+entrypoints) and the city\_car / tetris PDDL files unmodified.
+
+The novel contributions of this work over either source project are
+threefold. \emph{(i) Prompt unification:} both prior repos shipped
+monolithic per-domain prompts with model-specific tweaks; we factor
+the prompt into a model-agnostic
+\texttt{compose.build\_problem\_prompt} so byte-identity across the
+five models is structural rather than runtime-checked.
+\emph{(ii) Wider but controlled matrix:} Project~A varied domains at
+fixed model, Project~B varied models at fixed (small) domain set;
+we vary both with a $5\times 6\times 2$ matrix that keeps every cell
+comparable. \emph{(iii) Two ablations the prior work could not run:}
+the QwQ-32B vs.\ Qwen2.5-32B reasoning post-training comparison
+(Section~\ref{sec:results:qwq}) and the cross-domain
+classical-planner difficulty calibration
+(Section~\ref{sec:results:per-instance}). Where our study overlaps
+with the prior work --- Llama-3.3-70B on blocksworld, mid-class
+models on city\_car / tetris --- our absolute solve rates land in
+the same neighbourhood as the prior reports once per-model prompt
+tuning is removed; the model-capability \emph{ranking} is therefore
+robust to prompt choice, the \emph{absolute} numbers are not.

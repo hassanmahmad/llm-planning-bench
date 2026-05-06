@@ -9,12 +9,16 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning}
+\usepackage{graphicx}
+\usepackage{capt-of}
 \usepackage{hyperref}
+\graphicspath{{./}}
 
 \lstset{
   basicstyle=\ttfamily\small,
@@ -31,25 +35,129 @@
        \large Unifying Merola~et~al.\ (Project~A) and
        D'Ascenzo~\&~Gentili (Project~B)}
 \author{Usama Shabbir Satti \and Muhammad Fahim Asim \and Hassan Ahmed Mujtaba}
-\date{April 2026 --- Day~1 draft}
+\date{May 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-% Fill on Day 3 once Results are in.
-\noindent\textit{Abstract --- to be written on Day~3 once the 18-cell
-results matrix is populated.}
+\noindent
+We unify two prior student projects on LLM-based PDDL planning into a
+single controlled comparative study and run it on the Leonardo
+supercomputer (CINECA). The experiment grew incrementally on both
+axes: a $3$-model core (Llama-3.1-8B, Qwen2.5-32B, Llama-3.3-70B)
+extended to $5$ models with the addition of QwQ-32B and
+Mistral-Small-24B; and $3$ complex domains
+(blocksworld, citycar, tetris) extended to $6$ with three simple
+short-plan domains (basic\_move, visit-all, satellite) that serve as
+a difficulty floor. The resulting $60$ \mbox{(model, domain, condition)}
+cells run $10$--$20$ instances each with up to $4$ iterations of
+validator-guided feedback. Headline findings:
+(i)~chain-of-thought is task-class-dependent --- hurting on $13$ of
+$30$ \mbox{(model, domain)} pairs and helping on $9$;
+(ii)~reasoning post-training, as instantiated by QwQ-32B, is a
+\emph{net negative} for PDDL planning ($-16.4$~pp vs.\ its Qwen2.5-32B
+base), the largest single effect we measured;
+(iii)~simple domains are mostly solved while complex domains collapse
+to $\leq 9.5\%$ solve rate, with the natural breakpoint at the
+$\sim$$8$-action plan-length mark.
+The full pipeline (notebook, SLURM scripts, raw CSVs) is reproducible
+end-to-end.
 \end{abstract}
 
-% \input{context}           % Day 4
-% \input{experimental_design}   % Day 4
 \input{methodology}
-% \input{results}           % Day 3
-% \input{discussion}        % Day 3
-% \input{limitations}       % Day 3
-% \input{conclusions}       % Day 4
+\input{related_work}
+\input{results}
+\input{discussion}
+\input{acknowledgments}
 
-\input{appendix_prompts}
+\begin{thebibliography}{99}
+
+% --- Foundational PDDL ---
+\bibitem{pddl}
+D.~McDermott et al.
+\newblock \emph{PDDL --- The Planning Domain Definition Language}.
+\newblock Technical Report CVC TR-98-003 / DCS TR-1165, Yale Center for
+Computational Vision and Control, 1998.
+
+% --- LLMs and planning: position / surveys ---
+\bibitem{kambhampati2024llmmodulo}
+S.~Kambhampati, K.~Valmeekam, L.~Guan, M.~Verma, K.~Stechly,
+S.~Bhambri, L.~Saldyt, A.~Murthy.
+\newblock Position: LLMs Can't Plan, But Can Help Planning in
+LLM-Modulo Frameworks.
+\newblock \emph{ICML 2024}.
+
+\bibitem{plangenllms-survey}
+H.~Wei, Z.~Zhang, S.~He, T.~Xia, S.~Pan, F.~Liu.
+\newblock PlanGenLLMs: A Modern Survey of LLM Planning Capabilities.
+\newblock \emph{arXiv:2502.11221}, 2025.
+
+\bibitem{plaat-reasoning}
+A.~Plaat, A.~Wong, S.~Verberne, J.~Broekens, N.~van Stein, T.~Back.
+\newblock Reasoning with Large Language Models, a survey.
+\newblock \emph{arXiv:2407.11511}, 2024.
+
+% --- Reasoning / CoT origins ---
+\bibitem{kojima2022zeroshot}
+T.~Kojima, S.~S.~Gu, M.~Reid, Y.~Matsuo, Y.~Iwasawa.
+\newblock Large Language Models are Zero-Shot Reasoners.
+\newblock \emph{NeurIPS 2022}.
+
+% --- Iterative refinement (our iteration loop's ancestry) ---
+\bibitem{madaan2023selfrefine}
+A.~Madaan, N.~Tandon, P.~Gupta, S.~Hallinan, L.~Gao, S.~Wiegreffe,
+U.~Alon, et al.
+\newblock Self-Refine: Iterative Refinement with Self-Feedback.
+\newblock \emph{NeurIPS 2023}.
+
+% --- LLM + planner / world model architectures ---
+\bibitem{hao2023rap}
+S.~Hao, Y.~Gu, H.~Ma, J.~J.~Hong, Z.~Wang, D.~Z.~Wang, Z.~Hu.
+\newblock Reasoning with Language Model is Planning with World Model.
+\newblock \emph{EMNLP 2023}.
+
+\bibitem{song2023llmplanner}
+C.~H.~Song, J.~Wu, C.~Washington, B.~M.~Sadler, W.-L.~Chao, Y.~Su.
+\newblock LLM-Planner: Few-Shot Grounded Planning for Embodied
+Agents with Large Language Models.
+\newblock \emph{ICCV 2023}.
+
+\bibitem{curtis2024proc3s}
+A.~Curtis, N.~Kumar, J.~Cao, T.~Lozano-P\'erez, L.~P.~Kaelbling.
+\newblock Trust the PRoC3S: Solving Long-Horizon Robotics Problems
+with LLMs and Constraint Satisfaction.
+\newblock \emph{CoRL 2024}.
+
+% --- The two source projects this study merges ---
+\bibitem{projecta}
+M.~Merola, A.~Singh, A.~Dardouri.
+\newblock \emph{LLM planning framework for PDDL with meta-networks},
+2024/25 academic-year project, Università di Bologna.
+\newblock \url{https://dvcs.apice.unibo.it/pika-lab/courses/ai-ethics/projects/merolasinghdardouri2425}
+
+\bibitem{projectb}
+D.~D'Ascenzo, A.~Gentili.
+\newblock \emph{LLM Needs a Plan: comparing four LLMs on PDDL planning
+with validator-guided iteration},
+2024/25 academic-year project, Università di Bologna.
+\newblock \url{https://github.com/alessandrogentili001/LLM-Needs-a-Plan}
+
+% --- Tools and benchmark instances ---
+\bibitem{val}
+KCL-Planning.
+\newblock \emph{VAL --- The PDDL Plan Validator}.
+\newblock \url{https://github.com/KCL-Planning/VAL}
+
+\bibitem{pyperplan}
+\emph{Pyperplan} --- a lightweight STRIPS classical planner in Python.
+\newblock \url{https://github.com/aibasel/pyperplan}
+
+\bibitem{ipc-instances}
+Potassco.
+\newblock \emph{PDDL instances repository (IPC competition problems)}.
+\newblock \url{https://github.com/potassco/pddl-instances}
+
+\end{thebibliography}
 
 \end{document}

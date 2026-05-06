@@ -1,21 +1,36 @@
 \begin{tabular}{llrrr}
 \toprule
-model & domain & baseline_vap_pct & cot_vap_pct & delta_pp \\
+model & domain & baseline vap \textbackslash \% & cot vap \textbackslash \% & \$\textbackslash Delta\$ pp \\
 \midrule
+llama8 & basic\_move & 96.25 & 100.00 & 3.75 \\
+llama8 & visit-all & 84.74 & 84.46 & -0.27 \\
+llama8 & satellite & 51.57 & 32.61 & -18.96 \\
 llama8 & blocksworld & 17.97 & 30.85 & 12.88 \\
 llama8 & citycar & 9.07 & 17.44 & 8.37 \\
 llama8 & tetris & 22.21 & 19.37 & -2.84 \\
+qwen25 & basic\_move & 100.00 & 100.00 & 0.00 \\
+qwen25 & visit-all & 100.00 & 100.00 & 0.00 \\
+qwen25 & satellite & 97.33 & 92.79 & -4.54 \\
 qwen25 & blocksworld & 26.49 & 46.77 & 20.28 \\
 qwen25 & citycar & 45.25 & 15.81 & -29.44 \\
 qwen25 & tetris & 2.62 & 14.08 & 11.45 \\
-qwq32 & blocksworld & 22.57 & 21.24 & -1.33 \\
-qwq32 & citycar & 18.78 & 14.83 & -3.95 \\
-qwq32 & tetris & 24.27 & 45.45 & 21.18 \\
-mistral24 & blocksworld & 34.50 & 50.49 & 15.98 \\
-mistral24 & citycar & 18.13 & 14.29 & -3.85 \\
-mistral24 & tetris & 2.38 & 2.04 & -0.34 \\
+llama33 & basic\_move & 100.00 & 100.00 & 0.00 \\
+llama33 & visit-all & 100.00 & 100.00 & 0.00 \\
+llama33 & satellite & 99.33 & 94.74 & -4.60 \\
 llama33 & blocksworld & 36.34 & 31.69 & -4.66 \\
 llama33 & citycar & 15.13 & 6.31 & -8.82 \\
 llama33 & tetris & 0.00 & 3.12 & 3.12 \\
+qwq32 & basic\_move & 69.31 & 66.35 & -2.96 \\
+qwq32 & visit-all & 87.50 & 71.18 & -16.32 \\
+qwq32 & satellite & 57.44 & 45.14 & -12.30 \\
+qwq32 & blocksworld & 22.57 & 21.24 & -1.33 \\
+qwq32 & citycar & 18.78 & 14.83 & -3.95 \\
+qwq32 & tetris & 24.27 & 45.45 & 21.18 \\
+mistral24 & basic\_move & 100.00 & 100.00 & 0.00 \\
+mistral24 & visit-all & 100.00 & 100.00 & 0.00 \\
+mistral24 & satellite & 87.61 & 89.00 & 1.39 \\
+mistral24 & blocksworld & 34.50 & 50.49 & 15.98 \\
+mistral24 & citycar & 18.13 & 14.29 & -3.85 \\
+mistral24 & tetris & 2.38 & 2.04 & -0.34 \\
 \bottomrule
 \end{tabular}

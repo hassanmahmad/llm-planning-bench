@@ -1,7 +1,13 @@
 \begin{tabular}{llrrrrrr}
 \toprule
-domain & condition & mean_max_vap_qwen25 & mean_max_vap_qwq32 & success_rate_qwen25 & success_rate_qwq32 & Dsuccess_qwq32-qwen25 & Dvap_qwq32-qwen25 \\
+domain & condition & mean max vap qwen25 & mean max vap qwq32 & success rate qwen25 & success rate qwq32 & Dsuccess qwq32 minus qwen25 & Dvap qwq32 minus qwen25 \\
 \midrule
+basic\_move & baseline & 100.000 & 69.306 & 1.000 & 0.500 & -0.500 & -30.694 \\
+basic\_move & cot & 100.000 & 66.345 & 1.000 & 0.500 & -0.500 & -33.655 \\
+visit-all & baseline & 100.000 & 87.500 & 1.000 & 0.800 & -0.200 & -12.500 \\
+visit-all & cot & 100.000 & 71.176 & 1.000 & 0.300 & -0.700 & -28.824 \\
+satellite & baseline & 97.333 & 57.436 & 0.700 & 0.200 & -0.500 & -39.897 \\
+satellite & cot & 92.792 & 45.135 & 0.700 & 0.200 & -0.500 & -47.657 \\
 blocksworld & baseline & 26.489 & 22.569 & 0.100 & 0.053 & -0.047 & -3.920 \\
 blocksworld & cot & 46.772 & 21.239 & 0.150 & 0.100 & -0.050 & -25.532 \\
 citycar & baseline & 45.247 & 18.778 & 0.000 & 0.000 & 0.000 & -26.468 \\

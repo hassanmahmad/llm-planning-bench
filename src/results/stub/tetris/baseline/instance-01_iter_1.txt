@@ -1,2 +1,0 @@
-(move_square f3-0f f4-0f square0)
-(move_two f0-0f f1-0f f2-0f straight0)

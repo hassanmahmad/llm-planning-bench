@@ -1,6 +1,0 @@
-(put-down b3)
-(pick-up b3)
-(put-down b3)
-(pick-up b8)
-(put-down b8)
-(pick-up b9)

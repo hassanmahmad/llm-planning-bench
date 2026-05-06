@@ -1,3 +1,0 @@
-(putdown b1)
-(putdown b5)
-(putdown b3)

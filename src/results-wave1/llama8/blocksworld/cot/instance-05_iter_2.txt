@@ -1,4 +1,0 @@
-(pick-up b4)
-(put-down b4)
-(pick-up b1)
-(put-down b1)

@@ -1,2 +1,0 @@
-(car_arrived junction2-2 car3)
-(car_arrived junction2-1 car4)

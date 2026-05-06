@@ -1,270 +1,115 @@
 % ---------------------------------------------------------------------
-% Methodology — first draft.
-% Self-contained section; input from main.tex via \input{methodology}.
-% Appendix with the 6 reference prompts lives in appendix_prompts.tex.
+% Methodology --- compact 1-page version. No pipeline diagram (see notebook
+% for full schematic); subsections collapsed.
 % ---------------------------------------------------------------------
 
 \section{Methodology}
 \label{sec:methodology}
 
-This section describes the unified pipeline used to run
-$3\ \text{models} \times 3\ \text{domains} \times 2\ \text{prompting conditions} = 18$
-experimental cells, and the mechanical steps we took to keep every
-cell comparable. The key design commitment is that the only thing that
-varies between two cells is the axis being studied --- the model, the
-domain, or the prompting condition. Everything else (prompt shell,
-generation configuration, iteration policy, validator) is controlled
-by a single source of truth and verified on disk before and after the
-SLURM runs.
+\paragraph{Experimental matrix.}
+We evaluate $5$~models $\times\,6$~domains $\times\,2$~prompting conditions
+$=60$ cells, with $10$~problem instances per cell on the simple-tier
+domains and $20$ per cell on the complex tier ($871$ executed instances
+in total). All planning problems use the PDDL formal-planning
+language~\cite{pddl}, and all generated plans are checked by an
+external classical validator --- the \emph{LLM-Modulo} architecture
+recommended by Kambhampati et al.~\cite{kambhampati2024llmmodulo}, in
+which the LLM proposes plans and a sound external module accepts or
+rejects them. The matrix was rolled out incrementally: a 3-model core
+slate (Llama-3.1-8B, Qwen2.5-32B, Llama-3.3-70B) on three complex domains
+(\texttt{blocksworld}, \texttt{citycar}, \texttt{tetris}) was first
+executed to validate the design, then extended in two waves: two more
+models (QwQ-32B for a reasoning-post-training ablation, Mistral-Small-24B
+for a third-family cross-check), then three simple short-plan domains
+(\texttt{basic\_move}, \texttt{visit-all}, \texttt{satellite}) that
+serve as a difficulty floor and pipeline check. The design commitment
+is that the only thing varying between two cells is the axis under
+study (model, domain, or prompting condition); everything else is
+controlled by a single \texttt{config.yml} loaded once per job.
 
-\subsection{Pipeline overview}
-\label{sec:methodology:pipeline}
+\paragraph{Models.}
+The five-model slate spans three families and roughly one order of
+magnitude in parameter count: Meta (Llama-3.1-8B in bf16,
+Llama-3.3-70B in 4-bit NF4), Alibaba (Qwen2.5-32B and QwQ-32B, both
+bf16), and Mistral (Mistral-Small-24B, bf16). QwQ-32B is the same base
+architecture as Qwen2.5-32B with reasoning post-training added,
+isolating the post-training axis. Llama-3.3-70B was loaded in 4-bit
+NF4 (\texttt{bitsandbytes}) to fit on $2 \times$ A100-64\,GB; the
+quantization confound is discussed in Section~\ref{sec:limitations}.
 
-Figure~\ref{fig:pipeline} shows the end-to-end flow. A parametric
-SLURM entry point
-(\texttt{scripts/slurm/run.sh}) accepts three environment variables
---- \texttt{MODEL}, \texttt{DOMAIN}, \texttt{CONDITION} --- and is submitted
-18 times by \texttt{scripts/slurm/submit\_all.sh}. Each job loads one
-model once, iterates over the 20 instances of the assigned domain,
-and for every instance runs a prompt $\rightarrow$ generate $\rightarrow$
-validate loop with up to 4 iterations under a stop-on-success policy
-(Section~\ref{sec:methodology:iteration}). Per-iteration rows are
-appended to \texttt{run\_metrics.csv}; the final plan is written to
-\texttt{instance-XX\_plan.txt} with a metadata block that records
-\texttt{first\_valid\_iter}.
+\paragraph{Prompts.}
+The two source projects each shipped a monolithic per-domain prompt;
+we replaced this with a three-file module under
+\texttt{src/prompts/}: \texttt{shell.py} (system prompt,
+chain-of-thought scaffold, validation-feedback template),
+\texttt{descriptions.py} (one verbatim natural-language description per
+active domain), and \texttt{compose.py} (the \emph{model-agnostic}
+\texttt{build\_problem\_prompt(domain, condition, pddl\_domain,
+pddl\_problem)} entry point). Because the composer takes no model
+argument, byte-identity of prompts across models is a structural
+property rather than a runtime invariant. The two prompting conditions
+differ only in the \texttt{cot} scaffold prepended to the description.
 
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-    node distance=6mm and 10mm,
-    box/.style={draw, rounded corners=2pt, align=center,
-                minimum height=8mm, inner sep=4pt, font=\small},
-    cell/.style={draw, rounded corners=2pt, align=center,
-                 fill=black!3, minimum height=8mm, inner sep=4pt,
-                 font=\small},
-    arr/.style={-{Latex[length=2mm]}}
-]
-\node[box]                                      (cfg)   {\texttt{config.yml}\\(single source of truth)};
-\node[box, below=of cfg]                        (sub)   {\texttt{submit\_all.sh}\\($3{\times}3{\times}2 = 18$ sbatches)};
-\node[cell, below=of sub]                       (cell)  {SLURM cell --- \texttt{run.sh}\\$(M, D, C)$: 20 instances, up to 4 iters};
-\node[box, below=of cell, xshift=-28mm]         (llm)   {LLM\\(HF \texttt{transformers},\\ \texttt{device\_map="auto"})};
-\node[box, below=of cell]                       (val)   {VAL\\(\texttt{validate\_plan\_verbose})};
-\node[box, below=of cell, xshift=28mm]          (met)   {Metrics\\(extractor $\to$ CSV)};
-\node[box, below=of val]                        (out)   {\texttt{results/\{model\}/\{domain\}/\{condition\}/}\\($\star$ plans, $\star$ iter dumps, run\_metrics.csv)};
+\paragraph{Generation configuration.}
+All cells use the same sampling configuration: \texttt{temperature=0.1},
+\texttt{top\_p=0.95}, \texttt{top\_k=10}, \texttt{seed=42},
+\texttt{max\_new\_tokens=8192} for the bf16 models and $16384$
+for QwQ-32B (whose long \texttt{<think>} traces, characteristic of
+zero-shot CoT-style reasoning~\cite{kojima2022zeroshot}, fill the
+smaller budget; see Section~\ref{sec:limitations}). At job start, the
+generation configuration is echoed to stdout as a canonical JSON line;
+\texttt{grep}-ing the line across all stdout files gives a post-hoc,
+byte-exact audit of generation-config uniformity.
 
-\draw[arr] (cfg)  -- (sub);
-\draw[arr] (sub)  -- (cell);
-\draw[arr] (cell) -- (llm);
-\draw[arr] (cell) -- (val);
-\draw[arr] (cell) -- (met);
-\draw[arr] (llm)  |- ([yshift=-4mm]val.north) -- (val);
-\draw[arr] (val)  -- (out);
-\draw[arr] (met)  |- (out);
-\end{tikzpicture}
-\caption{Pipeline overview. \texttt{config.yml} is loaded once per job
-and echoed to stdout at job start (Section~\ref{sec:methodology:genconfig}),
-giving a post-hoc audit trail for the generation-configuration
-uniformity claim.}
-\label{fig:pipeline}
-\end{figure}
+\paragraph{Iteration policy.}
+Each instance gets up to four attempts under a stop-on-success policy
+inspired by self-refinement work~\cite{madaan2023selfrefine}:
+prompt the model, write the iteration's plan to disk, run VAL with the
+verbose flag, parse VAL's output into a metrics row, and break out of
+the loop on first valid plan. If all four attempts fail, the
+final plan file records \texttt{first\_valid\_iter = null}. Every
+iteration is logged before the validity check, so failed attempts are
+preserved for iteration-gain analysis. The price of stopping early is
+a well-understood selection bias: iterations $2$--$4$ contain only
+instances that failed earlier, so per-iteration aggregates across cells
+are not directly comparable without conditioning on
+``reached iter $k$''. Cumulative-solve curves
+(Figure~\ref{fig:plot3}) avoid this by indexing on per-instance
+first-valid iteration instead.
 
-\subsection{Model slate}
+\paragraph{Validator and metrics.}
+Plans are validated with the KCL-Planning VAL toolkit (verbose mode);
+a thin wrapper in \texttt{src/utils/validator.py} returns
+\texttt{(is\_valid, raw\_stdout)}, and
+\texttt{src/utils/metrics\_extractor.py} parses VAL's stdout into the
+schema \texttt{(plan\_text, plan\_len, solves\_problem,
+valid\_action\_percent, consecutive\_valid\_steps,
+logical\_violations, wallclock\_s, prompt\_tokens, completion\_tokens)}.
+A single validator and a single parser, called from a single point in
+the iteration loop, provide one source of truth for every metric in
+Section~\ref{sec:results}.
 
-We evaluate three instruction-tuned models spanning roughly one order
-of magnitude in parameter count and two families:
+\paragraph{Ground-truth difficulty.}
+For four of the six domains we computed an optimal-or-near-optimal
+plan length per instance with the classical
+\texttt{pyperplan}~\cite{pyperplan} planner
+(A*+\texttt{hff} for \texttt{blocksworld}; BFS for \texttt{basic\_move}
+and \texttt{visit-all}; hand-curated reference from Fast Downward for
+\texttt{satellite}, which uses \texttt{:equality} that pyperplan
+cannot parse). The original PDDL instances follow the IPC
+benchmark conventions and are sourced from the public
+\texttt{potassco/pddl-instances} collection~\cite{ipc-instances}. \texttt{citycar} and \texttt{tetris} use
+\texttt{:functions} (numeric fluents) and have no ground-truth column.
+The reference data lives in
+\texttt{src/data/<domain>/REFERENCE\_PLANS.csv} and is loaded by the
+analysis notebook to produce Figures~\ref{fig:plot13}
+and~\ref{fig:plot15}.
 
-\begin{table}[h]
-\centering
-\small
-\begin{tabular}{llll}
-\toprule
-Alias     & Repository                           & Family   & Profile \\
-\midrule
-llama8    & \texttt{meta-llama/Llama-3.1-8B-Instruct}  & Meta     & small (1$\times$ A100-80\,GB, 3\,h) \\
-qwen25    & \texttt{Qwen/Qwen2.5-32B-Instruct}         & Alibaba  & mid   (2$\times$ A100-80\,GB TP=2, 10\,h) \\
-llama33   & \texttt{meta-llama/Llama-3.3-70B-Instruct} & Meta     & large (2$\times$ A100-80\,GB TP=2, FP8, 14\,h) \\
-\bottomrule
-\end{tabular}
-\caption{Model slate. \texttt{llama8} vs \texttt{llama33} pins the
-intra-family scale axis; \texttt{qwen25} at 32B provides a cross-family
-mid-scale reference point.}
-\end{table}
-
-The slate choice is motivated in the Experimental Design section; here
-we only note that the SLURM profile associated with each model is
-hard-coded in \texttt{run.sh} so that resubmissions cannot silently
-drift onto a different GPU count, walltime, or quantization mode.
-
-\subsection{Prompt harmonization}
-\label{sec:methodology:prompts}
-
-The two source projects used a single monolithic prompt file each,
-branching internally on domain. We replaced this with a three-file
-module under \texttt{src/prompts/}:
-
-\begin{description}
-\item[\texttt{shell.py}] Domain-agnostic primitives:
-      \texttt{SYSTEM\_PROMPT\_PDDL} (the PDDL planner persona),
-      \texttt{COT\_SCAFFOLD(description, problem)} (the chain-of-thought
-      preamble), and \texttt{VALIDATION\_FEEDBACK\_TEMPLATE(val\_output,
-      previous\_plan)} (the feedback used on iteration~2+).
-\item[\texttt{descriptions.py}] One natural-language domain description per
-      active domain, copied verbatim from the source projects to preserve
-      prior phrasing. Dormant domains are declared as \texttt{None} and
-      raise \texttt{NotImplementedError} at composition time.
-\item[\texttt{compose.py}] The single entry point
-      \texttt{build\_problem\_prompt(domain, condition, pddl\_domain, pddl\_problem)}.
-      It takes \emph{no model argument}: byte-identity of prompts across
-      models is therefore a structural property, not a runtime one.
-\end{description}
-
-Pseudocode for the composed prompt:
-
-\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-SYSTEM_PROMPT_PDDL
-<blank>
-body     # = description  (baseline)  OR  COT_SCAFFOLD(description, problem)  (cot)
-<blank>
-=== DOMAIN DEFINITION ===
-<pddl_domain>
-<blank>
-=== PROBLEM DEFINITION ===
-<pddl_problem>
-<blank>
-Provide the plan now (one action per line).
-\end{lstlisting}
-
-The resulting prompt strings for \texttt{instance-01} under each
-(domain, condition) pair are committed as fixtures at
-\texttt{src/tests/fixtures/prompts/} and reproduced in
-Appendix~\ref{app:prompts}.
-
-\subsection{Prompting conditions}
-\label{sec:methodology:conditions}
-
-We study two conditions, differing only in the body slot of
-Section~\ref{sec:methodology:prompts}:
-
-\begin{itemize}
-\item \textbf{baseline} --- the body is the bare domain description.
-\item \textbf{cot} --- the body is the same description prepended by the
-      CoT scaffold (\texttt{COT\_SCAFFOLD}), a 4-step instruction to parse
-      initial state and goal, enumerate relevant actions, check
-      preconditions, and minimise plan length, emitted inside
-      \texttt{<think> \ldots </think>} tags.
-\end{itemize}
-
-All other tokens --- system prompt, domain PDDL, problem PDDL, trailing
-instruction --- are byte-identical between the two conditions. The
-\texttt{cot} prompt can be reconstructed exactly by inserting the
-scaffold preamble into the \texttt{baseline} prompt, which is how
-Section~\ref{sec:methodology:verification} defends the claim.
-
-\subsection{Generation configuration uniformity}
-\label{sec:methodology:genconfig}
-
-Generation parameters are declared once, in \texttt{config.yml} under
-the \texttt{generation} block, and reused by every cell:
-
-\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-generation:
-  temperature:    0.6
-  top_p:          0.95
-  top_k:          10
-  max_new_tokens: 4096
-  stop:           null
-  seed:           42
-\end{lstlisting}
-
-No per-model overrides are permitted. At job start, \texttt{run.sh}
-parses \texttt{config.yml} and echoes the resolved
-\texttt{generation} and \texttt{iteration} blocks to stdout as a
-single canonical JSON line tagged \texttt{"Generation config:"}. After
-all 18 jobs complete, grepping the 18 stdout files and diffing these
-lines gives a post-hoc, byte-exact audit that every cell ran with
-identical sampling parameters (see Section~\ref{sec:methodology:verification}).
-
-\subsection{Iteration policy --- stop-on-success}
-\label{sec:methodology:iteration}
-
-Each \texttt{(model, domain, condition, instance)} tuple is allowed up
-to \texttt{max\_iterations = 4} attempts. The iteration loop is:
-
-\begin{enumerate}
-\item Build the problem prompt (first iteration) or the
-      validation-feedback prompt (subsequent iterations).
-\item Generate a plan from the LLM.
-\item Write \texttt{instance-XX\_iter\_k.txt} to disk.
-\item Run \texttt{validate\_plan\_verbose}; extract structured metrics.
-\item Append one row to \texttt{run\_metrics.csv} with the columns
-      \texttt{(model, domain, prompting\_condition, instance, iteration,
-      plan\_text, plan\_len, solves\_problem, valid\_action\_percent,
-      consecutive\_valid\_steps, logical\_violations, wallclock\_s,
-      prompt\_tokens, completion\_tokens)}.
-\item If the plan is valid, record \texttt{first\_valid\_iter = k} and
-      break out of the loop.
-\end{enumerate}
-
-If all 4 iterations fail, the final \texttt{instance-XX\_plan.txt} is
-written using the iter-4 plan with
-\texttt{first\_valid\_iter = null} in the metadata block. This policy
-is deliberate: it saves compute at the cost of a
-well-understood selection bias --- iteration~$k$ is only populated by
-instances that failed iterations $1..k{-}1$, so per-iteration metrics
-across cells are not directly comparable without conditioning on
-``reached iter $k$''. We flag this bias explicitly in every figure
-that reports a per-iteration metric (Limitations).
-
-\subsection{Validator setup}
-\label{sec:methodology:validator}
-
-Plan validation uses the VAL toolkit (Jan Dolejsi's PDDL-extension
-build) pinned to a single commit SHA across local and HPC
-environments. A thin helper in \texttt{src/utils/validator.py},
-
-\begin{lstlisting}[basicstyle=\ttfamily\footnotesize]
-validate_plan_verbose(domain_path, problem_path, plan_text)
-    -> tuple[bool, str]
-\end{lstlisting}
-
-invokes \texttt{Validate -v} and returns \texttt{(is\_valid, raw\_stdout)}.
-\texttt{src/utils/metrics\_extractor.py} (ported from Project A's
-\texttt{utils/dataset\_generator.py}) parses the raw stdout into the
-row schema above. A single validator plus a single parser, called from
-a single place in the iteration loop, give us one source of truth for
-every metric that appears in the Results section.
-
-\subsection{Verification procedures}
-\label{sec:methodology:verification}
-
-Three checks run outside the SLURM critical path to defend the
-uniformity claims made above:
-
-\begin{enumerate}
-\item \textbf{Prompt cross-model identity.}
-      \texttt{scripts/verify/dump\_prompts.py} builds the prompt for
-      \texttt{instance-01} under each \texttt{(model, domain, condition)}
-      triple, hashes each output with SHA-256, and asserts that the three
-      per-model hashes agree for every
-      \texttt{(domain, condition)} combination. Because
-      \texttt{build\_problem\_prompt} takes no model argument, the check
-      is structurally guaranteed to pass; committing the SHA-256 digests
-      and the resulting fixtures makes that guarantee auditable.
-\item \textbf{Baseline-vs-CoT scaffold-only diff.}
-      The same script reconstructs the \texttt{baseline} prompt by
-      deleting the CoT scaffold block from the \texttt{cot} prompt and
-      asserts the reconstruction is byte-equal to the committed
-      \texttt{baseline} fixture. This rules out accidental drift of any
-      shared boilerplate between the two conditions.
-\item \textbf{Generation-configuration identity.}
-      On Day~2 (after all 18 jobs have produced at least a startup log)
-      we grep the \texttt{"Generation config:"} line from every stdout
-      file; all 18 must be byte-identical. Any mismatch halts analysis
-      until the affected cells are rerun with the canonical
-      configuration.
-\end{enumerate}
-
-Together these checks operationalise the methodology: the 18 cells are
-comparable because the pipeline that produced them was demonstrably
---- not merely intended to be --- uniform outside the three axes
-of variation.
+\paragraph{Reproducibility.}
+The full experimental log (every per-iteration row, every plan, every
+SLURM stdout) lives under \texttt{src/results-final/}. Every figure
+and table in the next section is regenerated end-to-end by
+\texttt{notebooks/results\_analysis.ipynb} from those CSVs; the SLURM
+entry script \texttt{scripts/slurm/run.sh} is parametric over
+\texttt{(MODEL, DOMAIN, CONDITION)} and enforces the
+single-config-source-of-truth invariant.

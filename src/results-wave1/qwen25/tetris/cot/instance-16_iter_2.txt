@@ -1,7 +1,0 @@
-(move_square f1-1f f0-1f square0)
-(move_square f2-1f f0-2f square1)
-(move_l_left f1-2f f1-3f f2-3f f0-3f f1-3f rightl0)
-(move_l_up f3-2f f3-3f f4-3f f2-0f f2-1f f2-2f rightl1)
-(move_l_up f5-2f f5-3f f6-3f f4-0f f4-1f f4-2f rightl2)
-(move_l_up f7-2f f7-3f f8-3f f6-0f f6-1f f6-2f rightl3)
-(move_l_up f9-2f f9-3f f10-3f f8-0f f8-1f f8-2f rightl4)

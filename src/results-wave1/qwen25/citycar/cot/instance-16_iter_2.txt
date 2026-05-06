@@ -1,1 +1,0 @@
-(move_car_in_road junction1-3 junction2-3 car0 road1)

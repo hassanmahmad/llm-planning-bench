@@ -1,6 +1,0 @@
-(at_two straight0 f0-2f f1-2f)
-(at_two straight1 f1-0f f1-1f)
-(at_two straight2 f2-1f f2-2f)
-(at_two straight0 f0-1f f0-2f)
-(at_two straight1 f1-1f f1-2f)
-(at_two straight2 f2-2f f2-3f)
