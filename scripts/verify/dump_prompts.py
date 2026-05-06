@@ -35,14 +35,17 @@ sys.path.insert(0, str(SRC_DIR))
 from prompts.compose import build_problem_prompt  # noqa: E402
 from prompts.shell import COT_SCAFFOLD            # noqa: E402
 
-MODELS = ["llama8", "qwen25", "llama33"]
-DOMAINS = ["blocksworld", "citycar", "tetris"]
+MODELS = ["llama8", "qwen25", "llama33", "qwq32", "mistral24"]
+DOMAINS = ["blocksworld", "citycar", "tetris", "basic_move", "visit-all", "satellite"]
 CONDITIONS = ["baseline", "cot"]
 
 DOMAIN_FILES = {
     "blocksworld": "blocksworld_domain.pddl",
     "citycar":     "city_car_domain.pddl",
     "tetris":      "tetris_domain.pddl",
+    "basic_move":  "domain.pddl",
+    "visit-all":   "domain.pddl",
+    "satellite":   "domain.pddl",
 }
 
 
@@ -103,7 +106,7 @@ def main() -> int:
     parser.add_argument(
         "--fixtures-dir",
         default=str(SRC_DIR / "tests" / "fixtures" / "prompts"),
-        help="Where the 6 reference prompts are saved on success",
+        help="Where the reference prompts (one per domain × condition) are saved on success",
     )
     parser.add_argument(
         "--no-write",
@@ -198,7 +201,7 @@ def main() -> int:
         print("--no-write set: skipping fixtures write.")
         return 0
 
-    print(f"Writing 6 reference fixtures to {fixtures_dir}")
+    print(f"Writing {len(DOMAINS) * len(CONDITIONS)} reference fixtures to {fixtures_dir}")
     for domain in DOMAINS:
         for condition in CONDITIONS:
             src = dump_dir / MODELS[0] / f"{domain}_{condition}.txt"

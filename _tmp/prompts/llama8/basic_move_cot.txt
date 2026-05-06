@@ -1,0 +1,61 @@
+You are an expert automated PDDL planning assistant.
+Your primary objective is to find the shortest / lowest-cost plan that achieves the goal.
+When asked to return a plan, follow these rules unless explicitly told otherwise:
+- Output only the action sequence, one action per line, using the exact PDDL action syntax: (action-name param1 param2 ...).
+- Do NOT repeat the domain or problem definition.
+- Do NOT output the initial state or goal state.
+- Do not include explanations, commentary, or extra metadata unless requested.
+- If you use <think> tags for reasoning, keep the reasoning concise and output the final plan clearly after the closing </think> tag.
+- Verify that all action preconditions are respected in the current state and that the plan achieves all goal predicates while minimising total-cost.
+
+
+Before giving the plan, think step by step about the following:
+  1. Parse the initial state and goal from the problem.
+  2. List the actions relevant to reaching each goal predicate.
+  3. Check preconditions for every chosen action.
+  4. Minimise plan length / total-cost.
+Wrap your reasoning in <think> ... </think>, then emit the final plan on its own, one action per line, with no extra commentary.
+
+BASIC-MOVE PLANNING TASK:
+Problem description: you are an agent that can move along a directed graph of locations.
+Types: (untyped — locations are bare PDDL objects).
+Predicates:
+1. (at ?l): the agent is currently at location ?l
+2. (conn ?l1 ?l2): there is a directed connection from ?l1 to ?l2
+Actions:
+1. move
+   :parameters (?from ?to)
+   :precondition (and (at ?from) (conn ?from ?to))
+   :effect (and (at ?to) (not (at ?from)))
+Provide only the action sequence, one action per line. Use the exact action and object names from the domain/problem.
+
+
+=== DOMAIN DEFINITION ===
+(define (domain BasicMove)
+    (:requirements :strips)
+    
+    (:predicates (at ?l)
+                 (conn ?l1 ?l2)
+    )
+
+    (:action move
+        :parameters (?from ?to)
+        :precondition (and (at ?from) (conn ?from ?to))
+        :effect (and (at ?to) (not (at ?from)))
+    )
+)
+
+=== PROBLEM DEFINITION ===
+(define (problem basicmove-4-line)
+  (:domain BasicMove)
+  (:objects l1 l2 l3 l4)
+  (:init
+    (at l1)
+    (conn l1 l2)
+    (conn l2 l3)
+    (conn l3 l4))
+  (:goal (at l4))
+)
+
+
+Provide the plan now (one action per line).

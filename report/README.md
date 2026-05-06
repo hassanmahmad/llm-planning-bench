@@ -10,7 +10,7 @@ on Days 2-4.
 |------|---------------------|-----------|
 | `main.tex` | document skeleton, packages, section order | Day 1 |
 | `methodology.tex` | Methodology (pipeline, prompts, config, iteration, validator, verification) | Day 1 |
-| `appendix_prompts.tex` | Appendix A — 6 reference prompts via `\lstinputlisting` of `../src/tests/fixtures/prompts/*.txt` | Day 1 |
+| `appendix_prompts.tex` | Appendix A — 12 reference prompts (6 domains × 2 conditions) via `\lstinputlisting` of `../src/tests/fixtures/prompts/*.txt` | Day 1 |
 | *(future)* `context.tex`, `experimental_design.tex`, `results.tex`, `discussion.tex`, `limitations.tex`, `conclusions.tex` | rest of the report | Days 2-4 |
 
 ## Build

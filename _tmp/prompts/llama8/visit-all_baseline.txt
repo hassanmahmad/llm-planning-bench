@@ -1,0 +1,58 @@
+You are an expert automated PDDL planning assistant.
+Your primary objective is to find the shortest / lowest-cost plan that achieves the goal.
+When asked to return a plan, follow these rules unless explicitly told otherwise:
+- Output only the action sequence, one action per line, using the exact PDDL action syntax: (action-name param1 param2 ...).
+- Do NOT repeat the domain or problem definition.
+- Do NOT output the initial state or goal state.
+- Do not include explanations, commentary, or extra metadata unless requested.
+- If you use <think> tags for reasoning, keep the reasoning concise and output the final plan clearly after the closing </think> tag.
+- Verify that all action preconditions are respected in the current state and that the plan achieves all goal predicates while minimising total-cost.
+
+
+VISIT-ALL PLANNING TASK:
+Problem description: you are a robot that must visit every place in a connected graph at least once.
+Types:
+1. place
+Predicates:
+1. (connected ?x ?y - place): there is a directed link from place ?x to place ?y
+2. (at-robot ?x - place): the robot is currently at place ?x
+3. (visited ?x - place): the robot has been at place ?x at some point
+Actions:
+1. move
+   :parameters (?curpos ?nextpos - place)
+   :precondition (and (at-robot ?curpos) (connected ?curpos ?nextpos))
+   :effect (and (at-robot ?nextpos) (not (at-robot ?curpos)) (visited ?nextpos))
+Provide only the action sequence, one action per line. Use the exact action and object names from the domain/problem.
+
+
+=== DOMAIN DEFINITION ===
+(define (domain visit-all)
+  (:requirements :typing)
+  (:types place - object)
+  (:predicates
+    (connected ?x ?y - place)
+    (at-robot ?x - place)
+    (visited ?x - place))
+
+  (:action move
+    :parameters (?curpos ?nextpos - place)
+    :precondition (and (at-robot ?curpos) (connected ?curpos ?nextpos))
+    :effect (and (at-robot ?nextpos) (not (at-robot ?curpos)) (visited ?nextpos)))
+)
+
+
+=== PROBLEM DEFINITION ===
+(define (problem visit-all-3-line)
+  (:domain visit-all)
+  (:objects p1 p2 p3 - place)
+  (:init
+    (at-robot p1)
+    (visited p1)
+    (connected p1 p2) (connected p2 p1)
+    (connected p2 p3) (connected p3 p2)
+  )
+  (:goal (and (visited p1) (visited p2) (visited p3)))
+)
+
+
+Provide the plan now (one action per line).
