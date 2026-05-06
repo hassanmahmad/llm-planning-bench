@@ -85,10 +85,85 @@ OUTPUT INSTRUCTIONS:
 
 
 # --------------------------------------------------------------------------
+# Wave 3 additions — small/structured benchmark domains.
+# --------------------------------------------------------------------------
+BASIC_MOVE_DESCRIPTION = """BASIC-MOVE PLANNING TASK:
+Problem description: you are an agent that can move along a directed graph of locations.
+Types: (untyped — locations are bare PDDL objects).
+Predicates:
+1. (at ?l): the agent is currently at location ?l
+2. (conn ?l1 ?l2): there is a directed connection from ?l1 to ?l2
+Actions:
+1. move
+   :parameters (?from ?to)
+   :precondition (and (at ?from) (conn ?from ?to))
+   :effect (and (at ?to) (not (at ?from)))
+Provide only the action sequence, one action per line. Use the exact action and object names from the domain/problem.
+"""
+
+
+VISIT_ALL_DESCRIPTION = """VISIT-ALL PLANNING TASK:
+Problem description: you are a robot that must visit every place in a connected graph at least once.
+Types:
+1. place
+Predicates:
+1. (connected ?x ?y - place): there is a directed link from place ?x to place ?y
+2. (at-robot ?x - place): the robot is currently at place ?x
+3. (visited ?x - place): the robot has been at place ?x at some point
+Actions:
+1. move
+   :parameters (?curpos ?nextpos - place)
+   :precondition (and (at-robot ?curpos) (connected ?curpos ?nextpos))
+   :effect (and (at-robot ?nextpos) (not (at-robot ?curpos)) (visited ?nextpos))
+Provide only the action sequence, one action per line. Use the exact action and object names from the domain/problem.
+"""
+
+
+SATELLITE_DESCRIPTION = """SATELLITE PLANNING TASK:
+Problem description: you control one or more satellites equipped with instruments. Each instrument supports certain imaging modes and must be calibrated against a designated calibration target before it can take an image. Power must be on for an instrument to be used; turning a satellite's power on for one instrument turns it off for any other on the same satellite.
+Types:
+1. satellite
+2. direction
+3. instrument
+4. mode
+Predicates:
+1. (on_board ?i - instrument ?s - satellite)
+2. (supports ?i - instrument ?m - mode)
+3. (pointing ?s - satellite ?d - direction)
+4. (power_avail ?s - satellite)
+5. (power_on ?i - instrument)
+6. (calibrated ?i - instrument)
+7. (have_image ?d - direction ?m - mode)
+8. (calibration_target ?i - instrument ?d - direction)
+Actions:
+1. turn_to
+   :parameters (?s - satellite ?d_new - direction ?d_prev - direction)
+   :precondition (and (pointing ?s ?d_prev) (not (= ?d_new ?d_prev)))
+   :effect (and (pointing ?s ?d_new) (not (pointing ?s ?d_prev)))
+2. switch_on
+   :parameters (?i - instrument ?s - satellite)
+   :precondition (and (on_board ?i ?s) (power_avail ?s))
+   :effect (and (power_on ?i) (not (calibrated ?i)) (not (power_avail ?s)))
+3. switch_off
+   :parameters (?i - instrument ?s - satellite)
+   :precondition (and (on_board ?i ?s) (power_on ?i))
+   :effect (and (power_avail ?s) (not (power_on ?i)))
+4. calibrate
+   :parameters (?s - satellite ?i - instrument ?d - direction)
+   :precondition (and (on_board ?i ?s) (calibration_target ?i ?d) (pointing ?s ?d) (power_on ?i))
+   :effect (calibrated ?i)
+5. take_image
+   :parameters (?s - satellite ?d - direction ?i - instrument ?m - mode)
+   :precondition (and (calibrated ?i) (on_board ?i ?s) (supports ?i ?m) (power_on ?i) (pointing ?s ?d))
+   :effect (have_image ?d ?m)
+Provide only the action sequence, one action per line. Use the exact action and object names from the domain/problem.
+"""
+
+
+# --------------------------------------------------------------------------
 # Dormant domains — placeholders. compose.build_problem_prompt raises
 # NotImplementedError for these until verbatim descriptions are ported.
 # --------------------------------------------------------------------------
-BASIC_MOVE_DESCRIPTION = None  # TODO: port if activated
 FOLDING_DESCRIPTION = None     # TODO: port if activated
 GRIPPER_DESCRIPTION = None     # TODO: port if activated
 HANOI_DESCRIPTION = None       # TODO: port if activated
@@ -104,6 +179,8 @@ DOMAIN_DESCRIPTIONS = {
     "citycar":     CITYCAR_DESCRIPTION,
     "tetris":      TETRIS_DESCRIPTION,
     "basic_move":  BASIC_MOVE_DESCRIPTION,
+    "visit-all":   VISIT_ALL_DESCRIPTION,
+    "satellite":   SATELLITE_DESCRIPTION,
     "folding":     FOLDING_DESCRIPTION,
     "gripper":     GRIPPER_DESCRIPTION,
     "hanoi":       HANOI_DESCRIPTION,
@@ -121,4 +198,7 @@ __all__ = [
     "BLOCKSWORLD_DESCRIPTION",
     "CITYCAR_DESCRIPTION",
     "TETRIS_DESCRIPTION",
+    "BASIC_MOVE_DESCRIPTION",
+    "VISIT_ALL_DESCRIPTION",
+    "SATELLITE_DESCRIPTION",
 ]

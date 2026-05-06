@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit test for src/utils/run_recorder.py (introduced in STEPS.md §1.2).
+"""Unit test for src/utils/run_recorder.py.
 
 Asserts the contract the iteration loop relies on:
 - record_iter writes <instance>_iter_<k>.txt with verbatim plan text

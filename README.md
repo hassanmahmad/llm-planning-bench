@@ -12,19 +12,20 @@ Unified pipeline for comparing LLM planning performance on PDDL problems with it
 
 ## Status
 
-**Phase: scaffolding (pre-execution).** The codebase is currently the inherited skeleton from Project B (D'Ascenzo & Gentili). Planned changes are tracked step-by-step in [STEPS.md](STEPS.md); the underlying design is in [plans/glowing-baking-turing.md](../../../../../Users/Hassan/.claude/plans/glowing-baking-turing.md).
+**Phase: results published.** Waves 1–3 have run on Leonardo; the analysis notebook,
+all 15 plots, and the final write-up live in [report.pdf](report.pdf) and
+[report/](report/). The pipeline below is what was used to produce them.
 
 | Component | Status |
 |---|---|
-| Project B skeleton (core, utils, main, SLURM templates) | Inherited |
-| Tetris + CityCar domains | Present |
-| Blocksworld domain (from Project A) | Pending (Day 0, STEPS §0.3) |
-| Harmonized prompts (`shell.py` / `descriptions.py` / `compose.py`) | Pending (Day 0, STEPS §0.4) |
-| Baseline + CoT prompting conditions | Pending (Day 0) |
-| Stop-on-success iteration loop + per-iter CSV logging | Pending (Day 1, STEPS §1.2) |
-| VAL-verbose metrics extractor | Pending (Day 1, STEPS §1.1) |
-| Parametric SLURM for 18-cell submission | Pending (Day 1, STEPS §1.4) |
-| Analysis notebook (10 plots) | Pending (Day 0 skeleton → Day 3 final) |
+| Project B skeleton merged with Project A domains/metrics | Done |
+| 6 active domains: blocksworld, citycar, tetris, basic_move, visit-all, satellite | Done |
+| Harmonized prompts (`shell.py` / `descriptions.py` / `compose.py`) | Done |
+| Baseline + CoT prompting conditions | Done |
+| Stop-on-success iteration loop + per-iter CSV logging | Done |
+| VAL-verbose metrics extractor | Done |
+| Parametric SLURM (5 models × 6 domains × 2 conditions, staged in 3 waves) | Done |
+| Analysis notebook + 15 plots + report | Done |
 
 ## Research Objectives
 
@@ -45,7 +46,7 @@ From the [project proposal](../Project%20Proposal%20-%20AI%20in%20Industry.pdf):
 | City Car | Multi-agent coordination, infrastructure management | Project B (D'Ascenzo & Gentili) |
 | Tetris | Spatial / geometric reasoning | Project B (D'Ascenzo & Gentili) |
 
-Nine additional Project A domains (Gripper, Logistics, Hanoi, Folding, Monkey, Travel, Labyrinth, Basic-Move, Shoe-Sock) are carried in the codebase as `domains.available` but are **not** run by the core experiment — they preserve optionality for follow-up work.
+Three further Project A domains (`basic_move`, `visit-all`, `satellite`) are also active. Eight more (Gripper, Logistics, Hanoi, Folding, Monkey, Travel, Labyrinth, Shoe-Sock) are carried as dormant `domains.available` entries — their PDDL files are present but no natural-language description is wired up; activate by porting a description into [src/prompts/descriptions.py](src/prompts/descriptions.py). See [src/data/README.md](src/data/README.md) for the full domain contract.
 
 ### Models (3 families)
 
@@ -64,7 +65,7 @@ Two conditions run against every (model, domain, instance):
 - **Baseline** — zero-shot: direct PDDL problem description + structured output instructions.
 - **Chain-of-Thought** — same prompt with a reasoning-step preamble.
 
-Both conditions share a single harmonized system prompt and one validation-feedback template per iteration. For a given (domain, condition, instance), **every model sees the byte-identical string** — verified via automated diff checks ([STEPS §1.6](STEPS.md)).
+Both conditions share a single harmonized system prompt and one validation-feedback template per iteration. For a given (domain, condition, instance), **every model sees the byte-identical string** — verified via automated diff checks before each wave was launched.
 
 ### Iteration policy
 
@@ -85,26 +86,118 @@ valid_action_percent, consecutive_valid_steps, logical_violations,
 wallclock_s, prompt_tokens, completion_tokens
 ```
 
-Aggregate analyses: success-rate matrix (with 95% CIs), iteration-gain curves, Baseline-vs-CoT delta, intra-family scale scatter (8B vs 70B), partial-credit distributions, domain-difficulty ranking. Full list in [plans/glowing-baking-turing.md §6](../../../../../Users/Hassan/.claude/plans/glowing-baking-turing.md).
+Aggregate analyses: success-rate matrix (with 95% CIs), iteration-gain curves, Baseline-vs-CoT delta, intra-family scale scatter (8B vs 70B), partial-credit distributions, domain-difficulty ranking. Full plot list in the analysis notebook.
+
+## Ground-truth difficulty: `REFERENCE_PLANS.csv`
+
+For each active domain we compute an **optimal-or-near-optimal plan length per instance** with a classical planner — *before* running any LLM. This separates "the model failed" from "the problem is genuinely hard," and gives the analysis a concrete x-axis for difficulty that doesn't depend on LLM behavior.
+
+### What the file contains
+
+`src/data/<domain>/REFERENCE_PLANS.csv`, one row per instance:
+
+| column | meaning |
+|---|---|
+| `instance` | problem-file stem (e.g. `instance-01`) |
+| `plan_len` | number of actions in the optimal plan the classical planner found |
+| `status` | `ok` (planner solved), `manual-reference` (transcribed from another planner), or `parse-error: ...` if pyperplan can't parse the domain |
+| `search` | which pyperplan algorithm was used (`bfs`, `astar`, …) |
+| `heuristic` | heuristic used (only meaningful for non-blind A\*) |
+| `elapsed_s` | planner wallclock (seconds) |
+
+### How it's generated
+
+[`scripts/verify/validate_instances.py`](scripts/verify/validate_instances.py) runs [pyperplan](https://github.com/aibasel/pyperplan) on every instance of every active domain. Two algorithms are wired in:
+
+- **BFS** — provably optimal, used for short-plan domains (`basic_move`, `visit-all`).
+- **A\* + `hff`** — admissible-heuristic search, much faster on richer domains; near-optimal in practice (used for `blocksworld`).
+
+```bash
+.venv/Scripts/python.exe scripts/verify/validate_instances.py
+# subset / different settings:
+.venv/Scripts/python.exe scripts/verify/validate_instances.py \
+    --domains basic_move visit-all --search astar --heuristic hff --timeout 60
+```
+
+The script preserves any row tagged `manual-reference` across re-runs, so hand-curated entries can't be silently overwritten.
+
+### Coverage by domain
+
+| Domain | n | plan_len range | mean | source |
+|---|---|---|---|---|
+| `basic_move` | 10 | 1–7 | 4.2 | pyperplan BFS |
+| `visit-all` | 10 | 2–10 | 5.4 | pyperplan BFS |
+| `satellite` | 10 | 5–18 | 9.8 | manual (Fast Downward, transcribed — pyperplan can't parse `:equality`) |
+| `blocksworld` | 20 | 4–26 | 14.4 | pyperplan A\*+hff |
+| `citycar` | — | — | — | **no reference** — domain uses `:functions` (numeric fluents) which pyperplan can't parse |
+| `tetris` | — | — | — | **no reference** — same `:functions` issue |
+
+For `citycar` and `tetris` the analysis falls back on **empirical consensus difficulty** (fraction of LLM cells that ever solved an instance) — see Plot 14 below.
+
+### How it's used in the analysis
+
+The notebook [`notebooks/results_analysis.ipynb`](notebooks/results_analysis.ipynb) loads every `REFERENCE_PLANS.csv` and produces:
+
+- **Plot 12 — per-domain reference plan-length boxplot.** Coarse difficulty ranking that doesn't depend on the LLMs. Confirms (e.g.) that blocksworld instances need substantially longer plans than basic_move.
+- **Plot 13 — per-instance reference difficulty within each domain.** Sorted bar of plan_len per instance. Shows whether the instance set has a smooth difficulty gradient or sharp jumps.
+- **Plot 15 — reference difficulty vs empirical model performance.** Scatter of optimal plan length (x) vs mean LLM partial validity across all 10 (model, condition) cells (y), one point per (domain, instance). The slope and correlation coefficient quantify whether longer reference plans really are harder for LLMs.
+
+For domains without reference plans (citycar, tetris), Plot 14 supplies an alternative x-axis: **per-instance solve-rate across the 5×2 = 10 LLM cells.** "Universal-easy" instances solve in most cells; "universal-hard" in none. This works for any domain because it's derived from the run metrics, not from a planner.
+
+### TL;DR
+
+Reference plans answer: *"How short a plan does this problem actually need?"*  
+LLM run metrics answer: *"How well did the model do?"*  
+Putting them on the same axis is what makes the difficulty analysis quantitative rather than anecdotal.
 
 ## Quick Start
 
-Full procedure in [STEPS.md](STEPS.md). Abbreviated:
-
 ```bash
 # Day 0 — local shake-out (~½ day, before any SLURM)
-python -m venv .venv && source .venv/Scripts/activate
+python -m venv .venv
+# Linux/macOS:        source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-# install VAL locally, verify: VAL/Validate --help
 
-# Run the smoke test for all 3 domains × 2 conditions with a stub model
+# Install VAL — see "Validator" section below for OS-specific instructions.
+
+# Run the smoke test for all 3 domains × 2 conditions with the stub model
 bash scripts/local/smoke_test.sh
 
-# Day 1 — submit all 18 SLURM jobs on Leonardo
+# Day 1 — submit all SLURM jobs on Leonardo
 bash scripts/slurm/submit_all.sh
 
 # Ingest + plot (after jobs finish)
 jupyter notebook notebooks/results_analysis.ipynb
+```
+
+For local config overrides that shouldn't be committed (e.g. dev paths, dtype tweaks),
+use [config.local.yml](config.local.yml) — it shadows `config.yml` at runtime.
+
+## Plug in your own model or domain
+
+This repo is set up so a new model or domain drops in with **a handful of one-line
+edits**, no Python changes. Concrete recipes:
+
+- **New model** (local, single GPU): just pass `--weights_path <hf-repo-id>` — HF
+  weights auto-download, output goes to `src/results/<basename>/`. Add an alias to
+  [config.yml](config.yml) `models.active` if you want a tidy `--model my_alias`.
+  For SLURM, also add a `case` arm in [scripts/slurm/run.sh](scripts/slurm/run.sh)
+  and a profile entry in [scripts/slurm/submit_all.sh](scripts/slurm/submit_all.sh).
+  Full contract: [src/models/README.md](src/models/README.md).
+
+- **New domain**: drop `src/data/<your-domain>/{domain.pddl, instance-NN.pddl}`,
+  add the name to [config.yml](config.yml) `domains.available`, and add a
+  `<NAME>_DESCRIPTION` constant + `DOMAIN_DESCRIPTIONS` entry in
+  [src/prompts/descriptions.py](src/prompts/descriptions.py). Optional but
+  recommended: run `python scripts/verify/validate_instances.py --domains <your-domain>`
+  to generate `REFERENCE_PLANS.csv` for the difficulty plots. Full contract:
+  [src/data/README.md](src/data/README.md).
+
+Smoke-test either before launching a real model:
+
+```bash
+python src/main.py --domain <your-domain> --condition baseline --model stub --iterations 1
 ```
 
 ## Planned Repository Structure
@@ -177,11 +270,35 @@ Setup guides (inherited from Project B):
 - [Work Directory And LLMs Download](assets/tutorials/5.%20Work%20Directory%20And%20LLMs%20Download.md)
 - [SLURM Files Explained](assets/tutorials/6.%20SLURM%20Files%20Explained.md)
 
-Consumer-GPU fallback (8B–14B range) is available if HPC access is revoked mid-project — see [plans/glowing-baking-turing.md §9](../../../../../Users/Hassan/.claude/plans/glowing-baking-turing.md).
+Consumer-GPU fallback (8B–14B range) is available if HPC access is revoked mid-project.
 
 ## Validator
 
-Plans are validated with [KCL-Planning/VAL](https://github.com/KCL-Planning/VAL). Verbose output (per-step action validity) feeds the per-problem feature extractor.
+Plans are validated with [KCL-Planning/VAL](https://github.com/KCL-Planning/VAL).
+Verbose output (per-step action validity) feeds the per-problem feature extractor.
+
+The repo expects a `Validate` (or `Validate.exe`) binary at `VAL/`. Two paths to get it:
+
+**Windows.** A pre-built `VAL/Validate.exe` is committed in this repo (Jan Dolejsi's
+PDDL-extension build). No setup needed; verify with:
+
+```powershell
+VAL\Validate.exe --help
+```
+
+`config.yml` already sets `VAL_EXECUTABLE: "Validate.exe"` for this case.
+
+**Linux / Leonardo.** Build VAL from source and drop the binary into `VAL/`:
+
+```bash
+git clone https://github.com/KCL-Planning/VAL /tmp/VAL && cd /tmp/VAL
+./scripts/linux/build_linux64.sh all Release
+cp build/linux64/Release/bin/Validate <repo>/VAL/Validate
+cd <repo> && VAL/Validate --help
+```
+
+Then set `VAL_EXECUTABLE: "Validate"` (no `.exe`) in `config.yml` —
+or, locally, in `config.local.yml`.
 
 ## Problem Sources
 
@@ -197,8 +314,6 @@ See [src/data/README.md](src/data/README.md) for per-domain instance details.
 
 Literature reviewed for this study lives in [assets/literature/](assets/literature/).
 
-## Planning Documents
+## Execution Guide
 
-- [STEPS.md](STEPS.md) — step-by-step execution guide (Day 0 through Day 4)
-- [glowing-baking-turing.md](../../../../../Users/Hassan/.claude/plans/glowing-baking-turing.md) — canonical plan aligned with the course proposal
-- [smooth-snuggling-muffin.md](../../../../../Users/Hassan/.claude/plans/smooth-snuggling-muffin.md) — broader engineering-tour alternative (reference only)
+[STEPS.md](STEPS.md) — step-by-step execution guide (Day 0 through Day 4).

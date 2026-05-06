@@ -1,0 +1,11 @@
+instance,plan_len,status,search,heuristic,elapsed_s
+instance-01,5,manual-reference,fast-downward,lmcut,0.0
+instance-02,5,manual-reference,fast-downward,lmcut,0.0
+instance-03,6,manual-reference,fast-downward,lmcut,0.0
+instance-04,7,manual-reference,fast-downward,lmcut,0.0
+instance-05,11,manual-reference,fast-downward,lmcut,0.0
+instance-06,10,manual-reference,fast-downward,lmcut,0.0
+instance-07,9,manual-reference,fast-downward,lmcut,0.0
+instance-08,12,manual-reference,fast-downward,lmcut,0.0
+instance-09,15,manual-reference,fast-downward,lmcut,0.0
+instance-10,18,manual-reference,fast-downward,lmcut,0.0

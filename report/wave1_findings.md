@@ -64,7 +64,7 @@ What this reveals:
 
 - **Blocksworld is a different problem from citycar/tetris.** Both models reach VAL parse-success >85% of the time on blocksworld. On the harder domains, VAL parse-failure dominates (citycar: 24–60%; tetris parse-fail or empty: 11–70%).
 - **qwen25/tetris/baseline collapses at the *prompt* layer, not at planning.** 70% of rows have empty `plan_text` — the model under the baseline prompt is not emitting recognizable PDDL action lines on tetris at all. CoT *fixes* this completely (0% empty, 94% partial), which is why the headline metric jumps 1.5% → 13.1%. This is not "CoT helps the model reason" — it is "CoT gets the model to emit a plan in the first place." Worth flagging in the discussion.
-- **qwen25/citycar moves in the opposite direction under CoT.** Parse-failure rises 32% → 60%; partial drops 61% → 29%. Re-running VAL on a parse-fail row confirms the failure mode: the model invents object names (e.g., `road5`, `road6`) that aren't declared in the problem, and VAL halts at `Object with unknown type: road5` before reporting plan size. The CoT scratchpad on this domain × model appears to encourage the model to plan past the available roads and build new ones with names that don't exist. Worth one paragraph in §Discussion as a concrete example of CoT going wrong.
+- **qwen25/citycar moves in the opposite direction under CoT.** Parse-failure rises 32% → 60%; partial drops 61% → 29%. Re-running VAL on a parse-fail row confirms the failure mode: the model invents object names (e.g., `road5`, `road6`) that aren't declared in the problem, and VAL halts at `Object with unknown type: road5` before reporting plan size. The CoT scratchpad on this domain × model appears to encourage the model to plan past the available roads and build new ones with names that don't exist. Worth one paragraph in the Discussion as a concrete example of CoT going wrong.
 - **llama8 spreads its failures across all three buckets**; qwen25 concentrates failure in one bucket per cell. That is the more meaningful "intra-family vs cross-family" qualitative difference than the raw vap%.
 
 ## 3. Iteration dynamics
@@ -103,7 +103,7 @@ Per-instance delta from iter 1 to last seen iter (not mean of means — this cou
 | qwen25/tetris/baseline      |  2 | 14 |  1 |  +0.7 pp |
 | qwen25/tetris/cot           |  1 | 12 |  6 |  −3.0 pp |
 
-**Iteration is helpful where the model already has traction, and noisy or harmful where it doesn't.** qwen25/blocksworld/cot moves +15 pp on average and includes both iter-3 solves; in contrast, llama8/tetris/cot gets *worse* by 9.6 pp on average across iterations. The proposal §3.4 "iteration-gain curves" plot should be cell-conditional, not aggregated, since the sign flips.
+**Iteration is helpful where the model already has traction, and noisy or harmful where it doesn't.** qwen25/blocksworld/cot moves +15 pp on average and includes both iter-3 solves; in contrast, llama8/tetris/cot gets *worse* by 9.6 pp on average across iterations. The proposal's "iteration-gain curves" plot should be cell-conditional, not aggregated, since the sign flips.
 
 A second methodological note for the limitations section: with stop-on-success, instances solved at iter 1 don't appear in the iter 2–4 rows at all, so simply averaging vap by iteration confounds two effects (model ability + selection of harder remaining instances). The per-instance delta table above is the version that controls for it.
 
@@ -155,7 +155,7 @@ Cap-conditional vap (when cap is hit, the model is in "ramble mode" and the extr
 | llama8/tetris/cot           |  9 |  2.4% | 14.2% |
 | qwen25/citycar/baseline     | 10 | 18.4% | 24.1% |
 
-The cap is selecting against valid plans on llama8, less so on qwen25/citycar. Two interpretations: (a) llama8 actually needs a higher cap on tetris/citycar to ever finish; (b) llama8's verbosity is itself the failure mode (the plan does appear early in the response — see the earlier finding in [glowing-baking-turing.md](../../glowing-baking-turing.md) — but the model then rambles past it and the extractor can't disambiguate). Either way, the cap correlates strongly with non-completion and should be reported.
+The cap is selecting against valid plans on llama8, less so on qwen25/citycar. Two interpretations: (a) llama8 actually needs a higher cap on tetris/citycar to ever finish; (b) llama8's verbosity is itself the failure mode (the plan does appear early in the response, but the model then rambles past it and the extractor can't disambiguate). Either way, the cap correlates strongly with non-completion and should be reported.
 
 qwen25 on blocksworld is shockingly token-efficient: 6 completion tokens per VAL-parsed action. That is essentially "no scratchpad, just emit the plan." This is why qwen25 is the only model with solves and is worth its own sentence in the discussion.
 
@@ -178,6 +178,29 @@ qwen25 on blocksworld is shockingly token-efficient: 6 completion tokens per VAL
 
 Wave 1 (12 cells) total: ~17.6 hours of wallclock.
 
+## 6b. Domain inventory (selected 6 domains)
+
+The selected domains for the controlled study, with structural complexity (parsed from each `domain.pddl`) and minimum plan length (length of the optimal or near-optimal solver plan we authored to validate each instance is solvable). For wave-1 domains, the empirical column is the wave-1-redo data above; for the wave-3 additions (basic_move, visit-all, satellite) the empirical column is left blank until those cells run.
+
+| domain | source | #actions | max action arity | #types | n instances | hand-authored plan length | empirical solves (wave 1, qwen25 only) | predicted tier |
+|---|---|---:|---:|---:|---:|---:|---|---|
+| basic_move  | this project — directed-graph traversal | 1 | 2 | 0 | 10 | 1–7 (mean 4.2)   | — | **easiest** |
+| visit-all   | this project — IPC-2014 formulation     | 1 | 2 | 1 | 10 | 2–10 (mean 5.4)  | — | **easiest** |
+| blocksworld | Project A (Merola et al.)               | 4 | 2 | 0 | 20 | n/a (5 solves; plans 6–8 actions) | 5/120 | easy |
+| satellite   | this project — IPC-2002 formulation     | 5 | 4 | 4 | 10 | 5–18 (mean 9.8)  | — | medium |
+| citycar     | Project B (D'Ascenzo & Gentili)         | 7 | 4 | 4 | 20 | n/a (no solves; mean-best vap 26%) | 0/120 | medium-hard |
+| tetris      | Project B (D'Ascenzo & Gentili)         | 6 | 7 | 6 | 20 | n/a (no solves; mean-best vap 12%) | 0/120 | hardest |
+
+How to read the columns:
+
+- **#actions** is the count of `(:action …)` blocks in `domain.pddl`. More actions = larger output vocabulary the model has to ground correctly.
+- **max action arity** is the largest action's parameter count. From the wave-1 data this is the best single predictor of VAL parse-failure rate (citycar arity-4 → 24–60% parse_fail; tetris arity-7 → 70% empty-plan rate on qwen25/baseline).
+- **#types** is the size of the `(:types …)` declaration. More types = more chances for the model to ground an object to the wrong type, which causes VAL to halt with `Object with unknown type: <X>`.
+- **hand-authored plan length** is the number of actions in the optimal / near-optimal plan we wrote and validated against VAL for each of the 10 instances. This is the *floor* — what a perfect planner would produce. Models that generate plans much shorter than this floor are emitting under-complete plans; models whose plans grow much longer are likely padding with redundant actions.
+- **predicted tier** ranks how hard we expect the domain to be for an LLM, combining structural complexity above with training-data familiarity (basic_move/visit-all/satellite/blocksworld are textbook PDDL domains; citycar and tetris are far less common in pretraining corpora).
+
+The new domains slot into the difficulty range below blocksworld (basic_move, visit-all) and roughly between blocksworld and citycar (satellite). This gives us a difficulty gradient over 6 cells instead of 3, and lets us answer "do these models fail because they can't plan, or because they can't read these specific PDDL dialects?" — if the easiest-tier domains see solve rates well above 0, the wave-1 zero-solve cells reflect domain-unfamiliarity more than fundamental planning inability.
+
 ## 7. Domain difficulty ranking
 
 Both models, both conditions, agree on:
@@ -188,7 +211,7 @@ Both models, both conditions, agree on:
 - citycar: high VAL parse-fail (24–60%), suggesting action signatures (4-arg actions like `move_car_in_road`) are harder to ground correctly. qwen25/citycar/baseline mean-best vap is 45% across instances — the model gets *close* repeatedly but never finishes.
 - tetris: highest variance across cells. qwen25/tetris/baseline collapses to empty plans, but qwen25/tetris/cot looks like a normal hard cell. The asymmetry here is a prompt-format effect, not a domain-difficulty effect.
 
-## 8. Things to note in §Limitations
+## 8. Things to note in the Limitations section
 
 These follow from the data above and from the previously-flagged caveats:
 
@@ -198,9 +221,9 @@ These follow from the data above and from the previously-flagged caveats:
 4. **llama8 fills the 8192 cap on citycar/tetris** in 9–11 of 20 instances. The 8192 → 16384 jump should be tested before drawing strong conclusions about llama8 on hard domains.
 5. **qwen25/citycar regression under CoT** likely reflects a prompt-format issue specific to that domain × model × condition triple. Inspecting the `cot_citycar` prompt against `cot_blocksworld` is the cheapest next debugging step.
 6. **Seed plumbing was fixed mid-experiment**; CUDA non-determinism remains. These wave-1-redo numbers are the "seeded" reference; comparisons across runs of the same cell still have small variance.
-7. **5 solves, all qwen25/blocksworld.** The success-rate matrix in proposal §3.4 will be sparse, and any claim about model ability on citycar/tetris must rely on partial-credit metrics (vap, consecutive_valid_steps) rather than solve-rate.
+7. **5 solves, all qwen25/blocksworld.** The proposal's success-rate matrix will be sparse, and any claim about model ability on citycar/tetris must rely on partial-credit metrics (vap, consecutive_valid_steps) rather than solve-rate.
 
-## 9. Suggested figures for proposal §3.4
+## 9. Suggested figures for the headline matrix
 
 Now informed by what's actually in the data:
 

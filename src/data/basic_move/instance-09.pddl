@@ -1,0 +1,13 @@
+(define (problem basicmove-9-grid)
+  (:domain BasicMove)
+  (:objects l11 l12 l13 l21 l22 l23 l31 l32 l33)
+  (:init
+    (at l11)
+    (conn l11 l12) (conn l12 l13)
+    (conn l21 l22) (conn l22 l23)
+    (conn l31 l32) (conn l32 l33)
+    (conn l11 l21) (conn l21 l31)
+    (conn l12 l22) (conn l22 l32)
+    (conn l13 l23) (conn l23 l33))
+  (:goal (at l33))
+)

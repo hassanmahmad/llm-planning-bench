@@ -1,0 +1,13 @@
+(define (problem visit-all-5-star)
+  (:domain visit-all)
+  (:objects c p1 p2 p3 p4 - place)
+  (:init
+    (at-robot c)
+    (visited c)
+    (connected c p1) (connected p1 c)
+    (connected c p2) (connected p2 c)
+    (connected c p3) (connected p3 c)
+    (connected c p4) (connected p4 c)
+  )
+  (:goal (and (visited c) (visited p1) (visited p2) (visited p3) (visited p4)))
+)

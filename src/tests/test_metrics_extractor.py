@@ -9,8 +9,6 @@ extractor reproduces Project A's scoring byte-for-byte.
 Note: we read the plan text from the CSV's `final_plan` column rather
 than the _plan.txt files on disk — the on-disk files were overwritten by
 a later run with different contents than what was scored in the CSV.
-
-STEPS.md §1.1.
 """
 
 from __future__ import annotations

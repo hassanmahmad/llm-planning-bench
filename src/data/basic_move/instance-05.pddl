@@ -1,0 +1,11 @@
+(define (problem basicmove-5-tree)
+  (:domain BasicMove)
+  (:objects l1 l2 l3 l4 l5)
+  (:init
+    (at l1)
+    (conn l1 l2)
+    (conn l1 l3)
+    (conn l3 l4)
+    (conn l3 l5))
+  (:goal (at l5))
+)

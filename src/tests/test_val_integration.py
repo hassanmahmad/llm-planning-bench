@@ -3,7 +3,7 @@
 
 Covers:
 - VAL executable detection / `--help` smoke.
-- The canonical `validate_plan_verbose` (STEPS.md §1.3): contract is
+- The canonical `validate_plan_verbose`: contract is
   `(is_valid, raw_stdout)`; raw stdout must be parsable by
   `metrics_extractor.parse_val_output`.
 - Legacy `validate_plan_from_text` — still in place for backwards
@@ -80,7 +80,7 @@ def test_val_integration():
 
     sample_plan = "(move_square pos1 pos2 piece1)"  # garbage, expected invalid
 
-    # 4a. canonical validator (STEPS.md §1.3)
+    # 4a. canonical validator
     print(f"\n  validate_plan_verbose (canonical):")
     is_valid, raw = validate_plan_verbose(
         str(tetris_domain), str(tetris_problem), sample_plan

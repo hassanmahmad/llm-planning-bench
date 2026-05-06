@@ -1,0 +1,13 @@
+(define (problem basicmove-7-line)
+  (:domain BasicMove)
+  (:objects l1 l2 l3 l4 l5 l6 l7)
+  (:init
+    (at l1)
+    (conn l1 l2)
+    (conn l2 l3)
+    (conn l3 l4)
+    (conn l4 l5)
+    (conn l5 l6)
+    (conn l6 l7))
+  (:goal (at l7))
+)

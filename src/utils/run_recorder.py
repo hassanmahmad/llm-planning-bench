@@ -4,7 +4,7 @@ Owns the three disk artifacts produced by a single (model, domain,
 condition, instance) run:
 
 * `<output_dir>/<instance>_iter_<k>.txt` — plan text at each iteration
-* `<output_dir>/run_metrics.csv` — one row per iteration; columns per STEPS.md §1.2
+* `<output_dir>/run_metrics.csv` — one row per iteration with the metric schema
 * `<output_dir>/<instance>_plan.txt` — final plan + Project B's
   `--- Processing Metadata ---` block (including `first_valid_iter`)
 

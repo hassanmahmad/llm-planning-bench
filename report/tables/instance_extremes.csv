@@ -1,0 +1,4 @@
+domain,easiest_instance,easiest_solved_by,easiest_vap,hardest_instance,hardest_solved_by,hardest_vap
+blocksworld,instance-05,5/10,77.6,instance-14,0/10,5.7
+citycar,instance-18,0/8,29.3,instance-19,0/8,2.3
+tetris,instance-09,0/10,27.1,instance-14,0/8,0.0

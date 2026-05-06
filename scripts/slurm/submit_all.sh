@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =====================================================================
-# STEPS.md §1.5 — submit all 18 cells (3 models × 3 domains × 2 conditions).
+# Submit all 18 cells (3 models × 3 domains × 2 conditions).
 # Each sbatch call:
 #   - exports MODEL / DOMAIN / CONDITION into the job environment
 #   - overrides --time / --gres according to the profile tied to $MODEL
@@ -21,14 +21,24 @@ cd "$(dirname "$0")/../.."
 #   MODELS_OVERRIDE="llama8 qwen25"     bash scripts/slurm/submit_all.sh   # wave 1
 #   MODELS_OVERRIDE="llama33"           bash scripts/slurm/submit_all.sh   # wave 2
 #   MODELS_OVERRIDE="qwq32 mistral24"   bash scripts/slurm/submit_all.sh   # wave 3 (post wave 2)
-# Wave 3 is the exploratory comparison set — see glowing-baking-turing.md §2b/§12.
+# Wave 3 is the exploratory comparison set.
 if [ -n "${MODELS_OVERRIDE:-}" ]; then
   # shellcheck disable=SC2206
   MODELS=( ${MODELS_OVERRIDE} )
 else
   MODELS=(llama8 qwen25 llama33)
 fi
-DOMAINS=(blocksworld citycar tetris)
+
+# Override domain list the same way, e.g.:
+#   DOMAINS_OVERRIDE="basic_move visit-all satellite" \
+#       MODELS_OVERRIDE="llama8 qwen25" bash scripts/slurm/submit_all.sh
+# Useful for staging new domains separately from the headline 3.
+if [ -n "${DOMAINS_OVERRIDE:-}" ]; then
+  # shellcheck disable=SC2206
+  DOMAINS=( ${DOMAINS_OVERRIDE} )
+else
+  DOMAINS=(blocksworld citycar tetris)
+fi
 CONDITIONS=(baseline cot)
 
 RUN_SCRIPT="scripts/slurm/run.sh"

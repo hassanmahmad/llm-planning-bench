@@ -1,15 +1,14 @@
 #!/bin/bash
 # =====================================================================
 # Parametric SLURM entrypoint for the 18-cell experiment.
-# STEPS.md §1.4 — one script, three SBATCH profiles, branched on $MODEL.
+# One script, three SBATCH profiles, branched on $MODEL.
 #
 # Inputs (environment variables, set by submit_all.sh):
 #   MODEL       one of: llama8 | qwen25 | llama33 | qwq32 | mistral24
 #   DOMAIN      one of: blocksworld | citycar | tetris
 #   CONDITION   one of: baseline | cot
 #
-# qwq32 / mistral24 are wave-3 exploratory additions (post wave 2);
-# see glowing-baking-turing.md §2b for the reasoning.
+# qwq32 / mistral24 are wave-3 exploratory additions (post wave 2).
 #
 # Submit manually with, e.g.:
 #   MODEL=llama8 DOMAIN=tetris CONDITION=cot sbatch scripts/slurm/run.sh
@@ -61,7 +60,7 @@ echo "=========================================="
 # Profile branch — derived from $MODEL.
 # submit_all.sh already picked --time/--gres for us;
 # the TP_SIZE / DTYPE / QUANTIZATION values below are echoed to the
-# job log for the §2.4 audit trail. Generation itself uses HF
+# job log for the audit trail. Generation itself uses HF
 # transformers with device_map="auto" (see src/core/model_manager.py)
 # and ignores these knobs.
 # -------------------------------------------------
@@ -178,13 +177,13 @@ if command -v nvidia-smi &>/dev/null; then
 fi
 
 # -------------------------------------------------
-# Generation config identity log (STEPS.md §2.4).
+# Generation config identity log.
 # Dumps config.yml[generation] + config.yml[iteration] as a single
 # canonical JSON line so `grep "Generation config:"` across all 18
 # job stdouts can be diffed byte-for-byte.
 # -------------------------------------------------
 echo "=========================================="
-echo " Generation config (STEPS.md §2.4 check)"
+echo " Generation config (identity check)"
 echo "=========================================="
 python - <<'PY'
 import json, sys, yaml
@@ -224,9 +223,9 @@ fi
 
 # Wave 3: QwQ-32B emits long <think>...</think> reasoning traces before the
 # final answer. The wave-1/2 cap of 8192 was already tight for llama8 on
-# citycar/tetris (see report/wave1_findings.md §5); QwQ needs more headroom.
-# Pre-cleared in glowing-baking-turing.md §12.6 — wave-3 cells are reported
-# as exploratory, not part of the controlled study's identical-config claim.
+# citycar/tetris (see report/wave1_findings.md); QwQ needs more headroom.
+# Wave-3 cells are reported as exploratory, not part of the controlled
+# study's identical-config claim.
 if [ "${MODEL}" = "qwq32" ]; then
   MAIN_ARGS+=(--max_tokens 12288)
 fi

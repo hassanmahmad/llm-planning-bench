@@ -18,16 +18,15 @@ MAX_GPU_MEMORY: null
 BATCH_SIZE: 1
 
 # --------------------------------------------------------------------
-# Experiment axes (STEPS.md §0.2)
+# Experiment axes
 # --------------------------------------------------------------------
 domains:
-  active:    [blocksworld, citycar, tetris]
-  available: [blocksworld, citycar, tetris, basic_move, folding, gripper, hanoi, labyrinth, logistics, monkey, shoe-sock, travel]
+  active:    [blocksworld, citycar, tetris, basic_move, visit-all, satellite]
+  available: [blocksworld, citycar, tetris, basic_move, visit-all, satellite, folding, gripper, hanoi, labyrinth, logistics, monkey, shoe-sock, travel]
 
 models:
-  # Core slate (waves 1–2): proposal §3.2 — Llama8, Qwen2.5-32B, Llama-3.3-70B.
+  # Core slate (waves 1–2): Llama8, Qwen2.5-32B, Llama-3.3-70B.
   # Wave 3 exploratory additions (run after wave 2): qwq32, mistral24.
-  # See glowing-baking-turing.md §2b for reasoning.
   active: [llama8, qwen25, llama33, qwq32, mistral24]
 
 conditions: [baseline, cot]

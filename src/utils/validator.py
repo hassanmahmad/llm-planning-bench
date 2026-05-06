@@ -152,7 +152,7 @@ def validate_plan_verbose(
 
     Canonical entry point for every VAL call in the pipeline: metrics
     extraction, iteration-loop validity checks, and feedback prompt
-    construction all go through this function (STEPS.md §1.3).
+    construction all go through this function.
 
     Non-PDDL lines (e.g. a trailing "Generated in N iterations." header
     left over from Project A plan files) are stripped before VAL sees

@@ -4,10 +4,9 @@
 (L38-63), stripped of all meta-network coupling, and left as a pure
 function.
 
-After STEPS.md §1.3 the VAL subprocess call lives in
+The VAL subprocess call lives in
 `utils.validator.validate_plan_verbose` — this module only composes
-that helper with the parser. See STEPS.md §1.1 for the port and §1.3
-for the validator unification.
+that helper with the parser.
 """
 
 from __future__ import annotations

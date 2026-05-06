@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify PDDLProcessor wiring after STEPS.md §1.2 (per-iter logging via RunRecorder).
+"""Verify PDDLProcessor wiring (per-iter logging via RunRecorder).
 
 What this asserts:
 - PDDLProcessor.__init__ accepts the new `model_name` kwarg and stamps
@@ -147,7 +147,7 @@ def test_pddl_processor_wires_recorder():
             assert required in plan_body, f"metadata missing: {required!r}"
         print(f"[OK] final plan + metadata block at {plan_path.name}")
 
-        # 3. CSV row is present with the §1.2 schema and right `model`
+        # 3. CSV row is present with the per-iter schema and right `model`
         csv_path = output_dir / bundle.domain_name / "cot" / "run_metrics.csv"
         assert csv_path.exists(), f"CSV missing: {csv_path}"
         with open(csv_path, encoding="utf-8") as f:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prompt-uniformity verification for STEPS.md §1.6.
+"""Prompt-uniformity verification.
 
 For each (model × domain × condition):
   - build the full prompt string via prompts.compose.build_problem_prompt

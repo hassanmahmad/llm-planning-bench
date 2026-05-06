@@ -139,19 +139,31 @@ class FileManager:
         )
 
     def _locate_domain_file(self, domain_dir: Path) -> Optional[Path]:
-        candidates = [domain_dir / "domain.pddl", domain_dir / f"{domain_dir.name}_domain.pddl"]
-        candidates.extend(domain_dir.glob("*_domain.pddl"))
-
-        for candidate in candidates:
-            if candidate.exists():
-                return candidate
-        return None
+        # Rule: any *.pddl whose filename contains "domain" (case-insensitive) is
+        # the domain file. Prefer `domain.pddl`, then `<dirname>_domain.pddl`,
+        # then the lexicographically first remaining match. Mirrors
+        # scripts/verify/validate_instances.py — keep the two in lockstep.
+        candidates = sorted(
+            child for child in domain_dir.glob("*.pddl")
+            if "domain" in child.name.lower()
+        )
+        if not candidates:
+            return None
+        for preferred in (domain_dir / "domain.pddl",
+                          domain_dir / f"{domain_dir.name}_domain.pddl"):
+            if preferred in candidates:
+                return preferred
+        return candidates[0]
 
     def _collect_problem_files(self, domain_dir: Path, domain_filename: str) -> List[Path]:
+        # Rule: any *.pddl whose filename does NOT contain "domain" is an instance
+        # — catches instance-NN.pddl, problem_NN.pddl, prob*.pddl, etc.
+        # `domain_filename` is kept in the signature for backward compatibility
+        # but is no longer needed for the filter.
         problems = [
             child
             for child in domain_dir.glob("*.pddl")
-            if child.name != domain_filename
+            if "domain" not in child.name.lower()
         ]
         return sorted(problems)
 

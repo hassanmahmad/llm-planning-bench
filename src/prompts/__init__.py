@@ -1,6 +1,6 @@
 """Prompt package for PDDL planning.
 
-Split into three files per STEPS.md §0.4:
+Split into three files:
   - shell.py:        SYSTEM_PROMPT_PDDL, COT_SCAFFOLD, VALIDATION_FEEDBACK_TEMPLATE
   - descriptions.py: DOMAIN_DESCRIPTIONS (verbatim from source projects)
   - compose.py:      build_problem_prompt(domain, condition, pddl_domain, pddl_problem)

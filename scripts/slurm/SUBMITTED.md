@@ -2,7 +2,7 @@
 
 Records every `sbatch` submission for the 18-cell experiment (3 models × 3 domains × 2 conditions).
 
-## Third-model decision (STEPS.md §0.8)
+## Third-model decision
 
 - **Pick**: `Qwen/Qwen2.5-32B-Instruct` — confirmed available on Leonardo / HF mirror.
 - **Fallback (not activated)**: `mistralai/Mistral-Small-24B-Instruct-2501`.
@@ -22,4 +22,4 @@ Records every `sbatch` submission for the 18-cell experiment (3 models × 3 doma
 |--------|-------|--------|-----------|---------|--------------|--------|
 |        |       |        |           |         |              |        |
 
-Populated by `scripts/slurm/submit_all.sh` on Day 1 §1.5.
+Populated by `scripts/slurm/submit_all.sh` on Day 1.

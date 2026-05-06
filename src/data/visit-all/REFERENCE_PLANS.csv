@@ -1,0 +1,11 @@
+instance,plan_len,status,search,heuristic,elapsed_s
+instance-01,2,ok,bfs,,0.002
+instance-02,3,ok,bfs,,0.002
+instance-03,3,ok,bfs,,0.002
+instance-04,4,ok,bfs,,0.002
+instance-05,7,ok,bfs,,0.002
+instance-06,5,ok,bfs,,0.002
+instance-07,5,ok,bfs,,0.002
+instance-08,10,ok,bfs,,0.003
+instance-09,7,ok,bfs,,0.004
+instance-10,8,ok,bfs,,0.006

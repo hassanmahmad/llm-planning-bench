@@ -1,0 +1,21 @@
+instance,plan_len,status,search,heuristic,elapsed_s
+instance-01,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.028
+instance-02,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-03,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-04,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.001
+instance-05,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-06,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-07,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-08,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-09,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-10,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-11,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.001
+instance-12,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-13,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.001
+instance-14,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-15,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.013
+instance-16,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-17,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.0
+instance-18,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.063
+instance-19,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.001
+instance-20,-1,parse-error: Found unknown keyword in domain definition: functions,astar,hff,0.001
