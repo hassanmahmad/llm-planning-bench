@@ -192,6 +192,32 @@ jupyter notebook notebooks/results_analysis.ipynb
 For local config overrides that shouldn't be committed (e.g. dev paths, dtype tweaks),
 use [config.local.yml](config.local.yml) — it shadows `config.yml` at runtime.
 
+### Local validation tiers
+
+Before pushing to SLURM, two cheap checks exercise different layers of the pipeline:
+
+1. **Stub smoke test** — pipeline-only (no HF, no GPU). Confirms argparse, prompt
+   composition, VAL invocation, CSV writes, and stop-on-success iteration all work.
+   Runs in seconds.
+
+   ```bash
+   bash scripts/local/smoke_test.sh
+   ```
+
+2. **Small-real-LLM smoke test** — exercises the actual model-loading codepath
+   (HF tokenizer, chat template, dtype auto-pick, validator feedback round-trip)
+   with [src/models/qwen25-3b-local/](src/models/qwen25-3b-local/) — Qwen2.5-3B-Instruct,
+   small enough to run on a single consumer GPU or CPU. Catches things the stub can't
+   (tokenizer/template mismatches, OOMs, generation-config bugs).
+
+   ```bash
+   python src/main.py --weights_path src/models/qwen25-3b-local \
+       --domain blocksworld --condition baseline \
+       --instance instance-01 --iterations 1
+   ```
+
+   Output goes to `src/results/qwen25-3b-local/blocksworld/baseline/`.
+
 ## Plug in your own model or domain
 
 This repo is set up so a new model or domain drops in with **a handful of one-line
