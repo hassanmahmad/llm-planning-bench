@@ -22,4 +22,4 @@ Records every `sbatch` submission for the 18-cell experiment (3 models × 3 doma
 |--------|-------|--------|-----------|---------|--------------|--------|
 |        |       |        |           |         |              |        |
 
-Populated by `scripts/slurm/submit_all.sh` on Day 1.
+

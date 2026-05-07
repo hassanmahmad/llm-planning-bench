@@ -249,7 +249,6 @@ python src/main.py --domain <your-domain> --condition baseline --model stub --it
 ```text
 llm-planning-bench/
 ├── README.md
-├── STEPS.md                               # execution guide (day-by-day, owner-tagged)
 ├── config.yml                             # domains, models, conditions, generation, iteration policy
 ├── requirements.txt
 ├── requirements_analysis.txt
